@@ -22,6 +22,7 @@ export default function Home() {
   const [datasets, setDatasets] = useState<any[]>([]);
   const [selectedDataset, setSelectedDataset] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [indexing, setIndexing] = useState(false);
   const [history, setHistory] = useState<{ question: string; answer: string; timestamp: number }[]>([]);
 
   async function loadDatasets() {
@@ -47,9 +48,32 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not select dataset");
+      setIndexing(true);
+      void monitorIndex();
     } catch (err: any) {
       setError(err.message || "Dataset selection failed");
     }
+  }
+
+  async function monitorIndex() {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        const res = await fetch(`${API}/api/datasets/index-status`);
+        const data = await res.json();
+        if (data.status === "ready") {
+          setIndexing(false);
+          return;
+        }
+        if (data.status === "error") {
+          setIndexing(false);
+          setError(data.error || "Dataset indexing failed");
+          return;
+        }
+      } catch {}
+    }
+    setIndexing(false);
+    setError("Dataset indexing is taking longer than expected.");
   }
 
   async function uploadDataset(file: File) {
@@ -159,12 +183,12 @@ export default function Home() {
 
             <label className="upload-btn">
               <Upload size={15} />
-              {uploading ? "Uploading..." : "Upload CSV"}
+              {uploading ? "Uploading..." : indexing ? "Indexing..." : "Upload CSV"}
               <input
                 type="file"
                 accept=".csv,text/csv"
                 hidden
-                disabled={uploading}
+                disabled={uploading || indexing}
                 onChange={e => {
                   const file = e.target.files?.[0];
                   if (file) uploadDataset(file);
@@ -180,7 +204,7 @@ export default function Home() {
 
           {selectedDataset && (
             <div className="dataset-meta">
-              <FileText size={13} /> Active dataset: <strong>{selectedDataset}</strong>
+              <FileText size={13} /> Active dataset: <strong>{selectedDataset}</strong>{indexing && " (indexing...)"}
             </div>
           )}
         </div>
@@ -200,7 +224,7 @@ export default function Home() {
                   <button type="button" key={x} onClick={() => setQuestion(x)}>{x}</button>
                 ))}
               </div>
-              <button className="run" disabled={loading || !question.trim()}>
+              <button className="run" disabled={loading || indexing || !question.trim()}>
                 {loading ? "Running..." : <>Run <Send size={16} /></>}
               </button>
             </div>

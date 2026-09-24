@@ -1,6 +1,6 @@
 import time
 import uuid
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from pathlib import Path
 import re
@@ -79,6 +79,7 @@ def schema():
 
 DATASET_DIR = Path(__file__).resolve().parents[3] / "datasets"
 DATASET_DIR.mkdir(parents=True, exist_ok=True)
+DATASET_INDEX_STATUS = {"status": "ready", "error": None}
 
 
 def _safe_dataset_name(name: str) -> str:
@@ -137,8 +138,17 @@ async def upload_dataset(file: UploadFile = File(...)):
     }
 
 
+def _rebuild_dataset_index():
+    try:
+        from app.rag.ingest import ingest
+        ingest()
+        DATASET_INDEX_STATUS.update({"status": "ready", "error": None})
+    except Exception as exc:
+        DATASET_INDEX_STATUS.update({"status": "error", "error": str(exc)})
+
+
 @router.post("/datasets/select")
-def select_dataset(payload: dict):
+def select_dataset(payload: dict, background_tasks: BackgroundTasks):
     name = payload.get("name", "")
     safe_name = _safe_dataset_name(name)
     target = DATASET_DIR / safe_name
@@ -165,17 +175,23 @@ def select_dataset(payload: dict):
             f"{safe_name}\n{table_name}", encoding="utf-8"
         )
 
-        from app.rag.ingest import ingest
-        ingest()
+        DATASET_INDEX_STATUS.update({"status": "indexing", "error": None})
+        background_tasks.add_task(_rebuild_dataset_index)
 
         return {
             "selected_dataset": safe_name,
             "table_name": table_name,
             "rows": len(df),
             "columns": df.columns.tolist(),
+            "index_status": "indexing",
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not activate dataset: {exc}")
+
+
+@router.get("/datasets/index-status")
+def dataset_index_status():
+    return DATASET_INDEX_STATUS
 
 
 @router.get("/datasets/selected")
