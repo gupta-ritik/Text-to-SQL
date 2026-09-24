@@ -122,8 +122,6 @@ async def upload_dataset(file: UploadFile = File(...)):
     try:
         import pandas as pd
         sample = pd.read_csv(target, nrows=5)
-        with target.open("r", encoding="utf-8", errors="ignore") as f:
-            rows = max(sum(1 for _ in f) - 1, 0)
     except Exception as exc:
         target.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"Invalid CSV: {exc}")
@@ -132,7 +130,7 @@ async def upload_dataset(file: UploadFile = File(...)):
         "message": "Dataset uploaded successfully.",
         "dataset": {
             "name": safe_name,
-            "rows": rows,
+            "rows": None,
             "columns": sample.columns.tolist(),
         },
     }
