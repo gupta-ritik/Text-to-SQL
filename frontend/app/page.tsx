@@ -70,7 +70,11 @@ export default function Home() {
           setError(data.error || "Dataset indexing failed");
           return;
         }
-      } catch {}
+      } catch {
+        setIndexing(false);
+        setError("Could not check dataset indexing status. Please refresh and try again.");
+        return;
+      }
     }
     setIndexing(false);
     setError("Dataset indexing is taking longer than expected.");

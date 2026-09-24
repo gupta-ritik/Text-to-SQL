@@ -25,6 +25,9 @@ app = FastAPI(
 )
 
 origins = [x.strip() for x in get_settings().cors_origins.split(",") if x.strip()]
+deployed_frontend = "https://text-to-sql-rho.vercel.app"
+if deployed_frontend not in origins:
+    origins.append(deployed_frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["http://localhost:3000"],
