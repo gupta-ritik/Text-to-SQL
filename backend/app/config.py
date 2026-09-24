@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     min_faithfulness: float = 0.85
     deepeval_model: str = "gpt-4.1-mini"
 
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,https://text-to-sql-rho.vercel.app"
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 
