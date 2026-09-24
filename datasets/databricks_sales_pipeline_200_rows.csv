@@ -1,0 +1,201 @@
+order_id,order_date,customer_id,customer_name,product,category,quantity,unit_price,region,city,payment_method,order_status
+ORD0001,2026-02-05,CUST014,Aditya Joshi,Printer,Electronics,3,12897.84,North,Delhi,Cash,Completed
+ORD0002,2026-03-01,CUST065,Kavya Nair,Laptop,Electronics,1,58747.81,Central,Indore,UPI,Pending
+ORD0003,2026-04-25,CUST076,Vikram Patel,Backpack,Accessories,5,2794.18,South,Chennai,UPI,Completed
+ORD0004,2026-03-28,CUST014,Priya Verma,Keyboard,Accessories,2,1302.88,West,Pune,Net Banking,Completed
+ORD0005,2026-04-28,CUST069,Priya Verma,Desk,Furniture,3,18914.05,East,Bhubaneswar,Net Banking,Completed
+ORD0006,2026-04-03,CUST074,Ananya Gupta,Backpack,Accessories,5,4564.72,Central,Indore,UPI,Completed
+ORD0007,2026-04-08,CUST036,Sneha Iyer,Monitor,Electronics,2,27329.67,South,Bengaluru,Debit Card,Completed
+ORD0008,2026-06-24,CUST010,Kavya Nair,Tablet,Electronics,3,39563.71,East,Bhubaneswar,Credit Card,Pending
+ORD0009,2026-06-13,CUST072,Ananya Gupta,Webcam,Accessories,4,2984.71,South,Hyderabad,Debit Card,Completed
+ORD0010,2026-02-24,CUST073,Pooja Shah,Mouse,Accessories,4,881.93,South,Hyderabad,Debit Card,Completed
+ORD0011,2026-02-05,CUST032,Pooja Shah,Backpack,Accessories,4,1742.91,West,Pune,Cash,Pending
+ORD0012,2026-04-13,CUST047,Ananya Gupta,Desk,Furniture,4,20365.17,East,Patna,Credit Card,Pending
+ORD0013,2026-02-10,CUST055,Kavya Nair,Laptop,Electronics,1,61113.65,West,Mumbai,UPI,Completed
+ORD0014,2026-05-22,CUST002,Aditya Joshi,Webcam,Accessories,5,2882.78,West,Ahmedabad,UPI,Cancelled
+ORD0015,2026-04-22,CUST021,Sneha Iyer,Backpack,Accessories,3,1623.9,Central,Indore,UPI,Cancelled
+ORD0016,2026-06-10,CUST039,Aditya Joshi,Smartphone,Electronics,5,70019.79,East,Patna,Cash,Pending
+ORD0017,2026-05-16,CUST001,Kavya Nair,Mouse,Accessories,2,1370.88,South,Hyderabad,Debit Card,Completed
+ORD0018,2026-03-03,CUST073,Priya Verma,Mouse,Accessories,3,831.01,North,Delhi,UPI,Cancelled
+ORD0019,2026-05-02,CUST071,Rahul Singh,Office Chair,Furniture,2,9311.05,West,Mumbai,Debit Card,Pending
+ORD0020,2026-06-26,CUST026,Pooja Shah,Tablet,Electronics,5,41434.28,Central,Indore,Debit Card,Completed
+ORD0021,2026-02-27,CUST009,Neha Reddy,Office Chair,Furniture,4,9178.08,East,Bhubaneswar,UPI,Pending
+ORD0022,2026-06-11,CUST008,Ananya Gupta,Desk,Furniture,2,6115.05,Central,Bhopal,UPI,Completed
+ORD0023,2026-05-05,CUST028,Rohan Kumar,Office Chair,Furniture,2,12012.59,East,Kolkata,Credit Card,Cancelled
+ORD0024,2026-04-15,CUST025,Priya Verma,Webcam,Accessories,2,5815.41,Central,Nagpur,UPI,Cancelled
+ORD0025,2026-01-14,CUST013,Aarav Sharma,Headphones,Accessories,4,4842.79,West,Pune,Net Banking,Cancelled
+ORD0026,2026-04-25,CUST018,Arjun Mehta,Tablet,Electronics,2,21657.31,East,Kolkata,Credit Card,Completed
+ORD0027,2026-05-21,CUST013,Aarav Sharma,Monitor,Electronics,4,26160.44,West,Mumbai,Cash,Completed
+ORD0028,2026-02-24,CUST052,Aarav Sharma,Smartphone,Electronics,4,45681.54,North,Delhi,Credit Card,Completed
+ORD0029,2026-06-28,CUST072,Aditya Joshi,Keyboard,Accessories,4,1498.7,North,Jaipur,Net Banking,Completed
+ORD0030,2026-05-19,CUST008,Pooja Shah,Tablet,Electronics,1,35271.31,South,Bengaluru,Debit Card,Completed
+ORD0031,2026-05-16,CUST021,Aarav Sharma,Webcam,Accessories,5,6556.63,North,Chandigarh,Cash,Completed
+ORD0032,2026-03-02,CUST052,Priya Verma,Desk,Furniture,1,16803.4,South,Hyderabad,Cash,Completed
+ORD0033,2026-06-18,CUST075,Kavya Nair,Laptop,Electronics,5,58279.34,Central,Nagpur,Cash,Completed
+ORD0034,2026-04-12,CUST017,Aditya Joshi,Backpack,Accessories,3,2107.01,East,Kolkata,Debit Card,Completed
+ORD0035,2026-05-25,CUST013,Priya Verma,Laptop,Electronics,4,79846.37,East,Kolkata,Cash,Completed
+ORD0036,2026-03-04,CUST048,Vikram Patel,Smartphone,Electronics,3,68209.26,Central,Indore,Credit Card,Completed
+ORD0037,2026-06-17,CUST068,Aarav Sharma,Keyboard,Accessories,5,3454.79,Central,Nagpur,Cash,Completed
+ORD0038,2026-05-22,CUST020,Vikram Patel,Keyboard,Accessories,1,3191.2,North,Delhi,Debit Card,Pending
+ORD0039,2026-03-09,CUST065,Sneha Iyer,Mouse,Accessories,2,1637.49,South,Chennai,Debit Card,Completed
+ORD0040,2026-03-27,CUST017,Aditya Joshi,Headphones,Accessories,3,1543.88,North,Chandigarh,Debit Card,Completed
+ORD0041,2026-01-29,CUST010,Pooja Shah,Printer,Electronics,4,19218.14,West,Ahmedabad,Credit Card,Pending
+ORD0042,2026-02-02,CUST006,Vikram Patel,Desk,Furniture,5,8369.5,North,Jaipur,Debit Card,Completed
+ORD0043,2026-04-01,CUST072,Arjun Mehta,Backpack,Accessories,2,3734.35,East,Kolkata,Cash,Cancelled
+ORD0044,2026-01-07,CUST023,Pooja Shah,Smartphone,Electronics,2,68240.72,South,Hyderabad,Debit Card,Completed
+ORD0045,2026-01-10,CUST061,Ananya Gupta,Smartphone,Electronics,1,39804.88,South,Bengaluru,Credit Card,Completed
+ORD0046,2026-02-19,CUST052,Neha Reddy,Tablet,Electronics,2,15828.26,East,Bhubaneswar,Debit Card,Completed
+ORD0047,2026-05-18,CUST043,Aarav Sharma,Backpack,Accessories,5,2718.78,East,Bhubaneswar,UPI,Completed
+ORD0048,2026-04-22,CUST045,Pooja Shah,Keyboard,Accessories,1,1003.53,South,Chennai,Debit Card,Completed
+ORD0049,2026-02-18,CUST033,Aarav Sharma,Monitor,Electronics,4,27990.09,Central,Nagpur,Net Banking,Completed
+ORD0050,2026-01-18,CUST043,Kavya Nair,Backpack,Accessories,2,2584.04,Central,Nagpur,Debit Card,Cancelled
+ORD0051,2026-04-15,CUST042,Arjun Mehta,Keyboard,Accessories,5,1566.0,North,Chandigarh,Debit Card,Pending
+ORD0052,2026-02-14,CUST079,Kavya Nair,Headphones,Accessories,4,6483.08,South,Hyderabad,Debit Card,Completed
+ORD0053,2026-05-29,CUST078,Aditya Joshi,Keyboard,Accessories,3,1288.51,Central,Bhopal,Debit Card,Completed
+ORD0054,2026-02-13,CUST011,Vikram Patel,Backpack,Accessories,2,3142.46,West,Pune,Cash,Cancelled
+ORD0055,2026-02-27,CUST026,Rahul Singh,Monitor,Electronics,2,23455.91,Central,Indore,UPI,Completed
+ORD0056,2026-06-11,CUST074,Ananya Gupta,Desk,Furniture,1,13286.66,South,Bengaluru,Net Banking,Completed
+ORD0057,2026-01-28,CUST055,Ananya Gupta,Smartphone,Electronics,1,68881.61,West,Mumbai,Credit Card,Cancelled
+ORD0058,2026-02-01,CUST059,Rahul Singh,Laptop,Electronics,5,64967.93,Central,Indore,Net Banking,Cancelled
+ORD0059,2026-04-24,CUST079,Pooja Shah,Desk,Furniture,3,21200.63,Central,Nagpur,Cash,Completed
+ORD0060,2026-03-05,CUST036,Rohan Kumar,Smartphone,Electronics,4,43653.98,Central,Indore,Net Banking,Cancelled
+ORD0061,2026-03-02,CUST035,Neha Reddy,Webcam,Accessories,1,5424.5,South,Bengaluru,Debit Card,Pending
+ORD0062,2026-02-09,CUST028,Priya Verma,Smartphone,Electronics,2,39833.01,North,Delhi,Net Banking,Completed
+ORD0063,2026-04-18,CUST050,Kavya Nair,Webcam,Accessories,4,1842.46,East,Patna,UPI,Pending
+ORD0064,2026-04-10,CUST054,Rohan Kumar,Laptop,Electronics,3,66944.51,West,Pune,Cash,Pending
+ORD0065,2026-01-08,CUST050,Neha Reddy,Tablet,Electronics,3,30254.26,South,Bengaluru,Net Banking,Cancelled
+ORD0066,2026-04-11,CUST076,Kavya Nair,Smartphone,Electronics,5,48445.05,South,Bengaluru,UPI,Completed
+ORD0067,2026-04-08,CUST042,Ananya Gupta,Webcam,Accessories,2,1776.57,West,Mumbai,Net Banking,Completed
+ORD0068,2026-01-21,CUST061,Aarav Sharma,Keyboard,Accessories,4,1406.36,East,Bhubaneswar,Cash,Completed
+ORD0069,2026-06-16,CUST006,Aarav Sharma,Backpack,Accessories,1,4168.69,East,Kolkata,Credit Card,Completed
+ORD0070,2026-06-21,CUST015,Kavya Nair,Smartphone,Electronics,2,25194.6,North,Chandigarh,Credit Card,Completed
+ORD0071,2026-01-30,CUST021,Vikram Patel,Smartphone,Electronics,5,52613.11,East,Bhubaneswar,UPI,Pending
+ORD0072,2026-02-20,CUST010,Kavya Nair,Desk,Furniture,4,12346.47,North,Jaipur,Credit Card,Completed
+ORD0073,2026-05-25,CUST006,Neha Reddy,Desk,Furniture,1,18739.64,East,Patna,Cash,Completed
+ORD0074,2026-04-18,CUST063,Priya Verma,Office Chair,Furniture,3,7227.74,East,Kolkata,Net Banking,Completed
+ORD0075,2026-05-14,CUST035,Kavya Nair,Smartphone,Electronics,4,28039.81,West,Ahmedabad,Cash,Completed
+ORD0076,2026-03-04,CUST012,Vikram Patel,Printer,Electronics,5,13367.91,West,Pune,Net Banking,Completed
+ORD0077,2026-05-07,CUST042,Rahul Singh,Desk,Furniture,4,11382.35,West,Ahmedabad,Net Banking,Completed
+ORD0078,2026-06-29,CUST036,Rohan Kumar,Mouse,Accessories,3,1984.58,East,Bhubaneswar,UPI,Pending
+ORD0079,2026-03-03,CUST061,Aditya Joshi,Tablet,Electronics,4,32100.22,South,Hyderabad,Net Banking,Completed
+ORD0080,2026-03-04,CUST040,Aditya Joshi,Keyboard,Accessories,2,1832.32,North,Delhi,Cash,Completed
+ORD0081,2026-05-21,CUST043,Neha Reddy,Office Chair,Furniture,3,14659.07,West,Ahmedabad,Net Banking,Completed
+ORD0082,2026-03-22,CUST016,Pooja Shah,Tablet,Electronics,1,40244.95,East,Bhubaneswar,Cash,Cancelled
+ORD0083,2026-05-31,CUST068,Kavya Nair,Tablet,Electronics,4,24677.49,South,Hyderabad,Debit Card,Completed
+ORD0084,2026-01-04,CUST069,Rahul Singh,Tablet,Electronics,3,21280.45,South,Bengaluru,Debit Card,Completed
+ORD0085,2026-05-06,CUST014,Aarav Sharma,Keyboard,Accessories,2,2486.04,North,Chandigarh,Cash,Completed
+ORD0086,2026-01-14,CUST033,Sneha Iyer,Webcam,Accessories,3,2514.0,West,Pune,UPI,Completed
+ORD0087,2026-01-14,CUST020,Rahul Singh,Monitor,Electronics,5,22588.91,West,Pune,Cash,Completed
+ORD0088,2026-06-05,CUST077,Kavya Nair,Monitor,Electronics,5,25288.87,North,Delhi,Credit Card,Pending
+ORD0089,2026-04-20,CUST040,Kavya Nair,Webcam,Accessories,3,6230.92,West,Pune,Cash,Completed
+ORD0090,2026-03-09,CUST011,Rahul Singh,Monitor,Electronics,2,22510.3,Central,Nagpur,Credit Card,Completed
+ORD0091,2026-06-26,CUST077,Sneha Iyer,Smartphone,Electronics,1,41285.5,Central,Bhopal,Debit Card,Completed
+ORD0092,2026-04-27,CUST010,Aditya Joshi,Printer,Electronics,3,22059.75,South,Bengaluru,Credit Card,Completed
+ORD0093,2026-02-27,CUST020,Vikram Patel,Tablet,Electronics,4,19017.17,Central,Nagpur,Credit Card,Completed
+ORD0094,2026-05-26,CUST037,Sneha Iyer,Keyboard,Accessories,5,2797.08,North,Delhi,UPI,Completed
+ORD0095,2026-05-07,CUST057,Priya Verma,Headphones,Accessories,3,5103.68,East,Patna,Cash,Completed
+ORD0096,2026-01-24,CUST030,Aditya Joshi,Mouse,Accessories,5,850.66,West,Ahmedabad,Cash,Pending
+ORD0097,2026-02-14,CUST061,Rohan Kumar,Keyboard,Accessories,5,812.65,North,Chandigarh,Net Banking,Completed
+ORD0098,2026-05-01,CUST045,Arjun Mehta,Headphones,Accessories,4,8758.63,South,Chennai,Debit Card,Completed
+ORD0099,2026-03-15,CUST052,Rohan Kumar,Mouse,Accessories,4,1648.61,North,Delhi,UPI,Completed
+ORD0100,2026-04-14,CUST066,Aarav Sharma,Keyboard,Accessories,3,1024.58,North,Jaipur,Cash,Completed
+ORD0101,2026-05-08,CUST057,Aarav Sharma,Tablet,Electronics,5,27662.28,West,Mumbai,Credit Card,Completed
+ORD0102,2026-05-05,CUST016,Aarav Sharma,Keyboard,Accessories,4,3166.37,Central,Bhopal,Cash,Completed
+ORD0103,2026-01-24,CUST029,Priya Verma,Office Chair,Furniture,1,16940.53,South,Bengaluru,Net Banking,Completed
+ORD0104,2026-03-11,CUST054,Sneha Iyer,Printer,Electronics,3,18177.44,South,Bengaluru,Net Banking,Completed
+ORD0105,2026-06-03,CUST066,Pooja Shah,Smartphone,Electronics,4,28864.79,West,Ahmedabad,Credit Card,Completed
+ORD0106,2026-01-01,CUST037,Pooja Shah,Mouse,Accessories,5,880.91,East,Bhubaneswar,Debit Card,Pending
+ORD0107,2026-05-04,CUST045,Neha Reddy,Webcam,Accessories,2,3956.01,Central,Nagpur,Cash,Pending
+ORD0108,2026-03-03,CUST074,Arjun Mehta,Mouse,Accessories,2,2165.39,West,Pune,Credit Card,Completed
+ORD0109,2026-04-08,CUST050,Aditya Joshi,Printer,Electronics,4,22104.56,North,Jaipur,Credit Card,Completed
+ORD0110,2026-01-26,CUST057,Priya Verma,Office Chair,Furniture,5,12975.9,North,Delhi,Cash,Completed
+ORD0111,2026-02-09,CUST010,Sneha Iyer,Smartphone,Electronics,4,67643.18,North,Chandigarh,Debit Card,Completed
+ORD0112,2026-06-22,CUST069,Arjun Mehta,Headphones,Accessories,1,7843.77,Central,Nagpur,Debit Card,Cancelled
+ORD0113,2026-06-11,CUST037,Ananya Gupta,Laptop,Electronics,5,57736.83,West,Ahmedabad,UPI,Completed
+ORD0114,2026-06-27,CUST039,Aarav Sharma,Printer,Electronics,1,16873.57,North,Chandigarh,UPI,Completed
+ORD0115,2026-03-04,CUST068,Arjun Mehta,Mouse,Accessories,3,1175.24,North,Jaipur,Cash,Cancelled
+ORD0116,2026-04-08,CUST080,Aditya Joshi,Smartphone,Electronics,1,52741.03,South,Hyderabad,Credit Card,Completed
+ORD0117,2026-04-28,CUST033,Aditya Joshi,Tablet,Electronics,4,37326.66,Central,Bhopal,UPI,Completed
+ORD0118,2026-03-30,CUST076,Vikram Patel,Office Chair,Furniture,2,8329.51,East,Patna,Net Banking,Cancelled
+ORD0119,2026-05-04,CUST014,Ananya Gupta,Keyboard,Accessories,2,3498.25,East,Bhubaneswar,Net Banking,Pending
+ORD0120,2026-06-18,CUST051,Vikram Patel,Keyboard,Accessories,3,761.43,East,Patna,UPI,Pending
+ORD0121,2026-03-15,CUST030,Kavya Nair,Printer,Electronics,4,24656.78,North,Chandigarh,Debit Card,Completed
+ORD0122,2026-06-10,CUST006,Vikram Patel,Keyboard,Accessories,2,2459.09,South,Chennai,Net Banking,Completed
+ORD0123,2026-03-17,CUST042,Pooja Shah,Printer,Electronics,2,9802.67,Central,Indore,Net Banking,Completed
+ORD0124,2026-03-11,CUST022,Vikram Patel,Office Chair,Furniture,3,16555.34,South,Hyderabad,Net Banking,Completed
+ORD0125,2026-02-27,CUST051,Rohan Kumar,Webcam,Accessories,1,2274.16,East,Kolkata,Debit Card,Completed
+ORD0126,2026-04-05,CUST034,Kavya Nair,Keyboard,Accessories,5,1046.05,West,Mumbai,Net Banking,Cancelled
+ORD0127,2026-06-08,CUST072,Neha Reddy,Backpack,Accessories,2,2991.61,East,Kolkata,Cash,Completed
+ORD0128,2026-01-30,CUST018,Aarav Sharma,Webcam,Accessories,3,5070.82,North,Chandigarh,UPI,Completed
+ORD0129,2026-02-04,CUST050,Sneha Iyer,Monitor,Electronics,2,27745.19,West,Mumbai,Debit Card,Cancelled
+ORD0130,2026-06-17,CUST013,Sneha Iyer,Desk,Furniture,2,20166.62,Central,Indore,Cash,Completed
+ORD0131,2026-04-24,CUST031,Neha Reddy,Printer,Electronics,3,12345.39,East,Kolkata,UPI,Cancelled
+ORD0132,2026-03-12,CUST025,Priya Verma,Backpack,Accessories,3,1430.09,East,Patna,Net Banking,Completed
+ORD0133,2026-01-13,CUST043,Ananya Gupta,Backpack,Accessories,5,4890.15,South,Chennai,Credit Card,Pending
+ORD0134,2026-03-01,CUST043,Rahul Singh,Office Chair,Furniture,2,17554.9,South,Hyderabad,Cash,Completed
+ORD0135,2026-02-14,CUST015,Aditya Joshi,Smartphone,Electronics,5,32287.29,East,Kolkata,UPI,Completed
+ORD0136,2026-02-14,CUST034,Aarav Sharma,Tablet,Electronics,5,26332.0,North,Jaipur,Credit Card,Cancelled
+ORD0137,2026-04-03,CUST066,Kavya Nair,Monitor,Electronics,1,19524.92,West,Ahmedabad,UPI,Completed
+ORD0138,2026-06-18,CUST067,Vikram Patel,Desk,Furniture,1,17635.89,Central,Bhopal,Net Banking,Cancelled
+ORD0139,2026-01-28,CUST063,Pooja Shah,Webcam,Accessories,4,3844.5,North,Delhi,Net Banking,Completed
+ORD0140,2026-03-12,CUST080,Aditya Joshi,Desk,Furniture,2,7050.92,North,Jaipur,Cash,Pending
+ORD0141,2026-05-10,CUST078,Arjun Mehta,Desk,Furniture,5,10718.36,East,Bhubaneswar,UPI,Cancelled
+ORD0142,2026-02-25,CUST056,Sneha Iyer,Backpack,Accessories,5,3939.19,North,Chandigarh,Credit Card,Completed
+ORD0143,2026-03-22,CUST055,Neha Reddy,Headphones,Accessories,4,6890.98,East,Bhubaneswar,Debit Card,Completed
+ORD0144,2026-01-22,CUST012,Arjun Mehta,Webcam,Accessories,1,2001.74,South,Chennai,UPI,Cancelled
+ORD0145,2026-05-24,CUST072,Neha Reddy,Office Chair,Furniture,1,17556.37,East,Kolkata,UPI,Completed
+ORD0146,2026-06-03,CUST040,Neha Reddy,Headphones,Accessories,1,8753.51,East,Patna,UPI,Pending
+ORD0147,2026-01-28,CUST045,Rohan Kumar,Smartphone,Electronics,4,30781.96,Central,Bhopal,Debit Card,Completed
+ORD0148,2026-06-09,CUST079,Aditya Joshi,Tablet,Electronics,4,44580.43,East,Patna,Cash,Completed
+ORD0149,2026-03-11,CUST040,Neha Reddy,Printer,Electronics,3,8579.06,Central,Nagpur,Debit Card,Completed
+ORD0150,2026-06-12,CUST004,Priya Verma,Desk,Furniture,4,7113.37,South,Hyderabad,Cash,Completed
+ORD0151,2026-03-21,CUST042,Kavya Nair,Webcam,Accessories,3,2365.75,West,Pune,Cash,Completed
+ORD0152,2026-01-21,CUST035,Sneha Iyer,Smartphone,Electronics,5,20836.46,North,Delhi,Net Banking,Completed
+ORD0153,2026-05-12,CUST015,Neha Reddy,Headphones,Accessories,3,2881.44,Central,Indore,Net Banking,Completed
+ORD0154,2026-06-20,CUST040,Aarav Sharma,Backpack,Accessories,5,3049.2,East,Patna,Credit Card,Completed
+ORD0155,2026-02-24,CUST018,Vikram Patel,Laptop,Electronics,2,67056.77,Central,Bhopal,Debit Card,Completed
+ORD0156,2026-04-08,CUST069,Pooja Shah,Webcam,Accessories,4,2466.32,North,Delhi,Credit Card,Pending
+ORD0157,2026-01-11,CUST056,Aarav Sharma,Mouse,Accessories,1,1114.73,Central,Nagpur,Net Banking,Completed
+ORD0158,2026-06-13,CUST054,Vikram Patel,Headphones,Accessories,5,4354.5,East,Patna,UPI,Completed
+ORD0159,2026-06-26,CUST047,Priya Verma,Smartphone,Electronics,5,44225.52,North,Jaipur,Net Banking,Completed
+ORD0160,2026-04-12,CUST040,Pooja Shah,Desk,Furniture,4,14383.4,South,Bengaluru,Debit Card,Completed
+ORD0161,2026-05-16,CUST066,Ananya Gupta,Monitor,Electronics,5,22664.49,East,Kolkata,Debit Card,Completed
+ORD0162,2026-02-14,CUST078,Rahul Singh,Monitor,Electronics,2,15119.36,South,Hyderabad,UPI,Completed
+ORD0163,2026-05-25,CUST080,Neha Reddy,Desk,Furniture,5,13182.48,West,Pune,Debit Card,Completed
+ORD0164,2026-03-12,CUST076,Aarav Sharma,Webcam,Accessories,4,4972.62,West,Mumbai,Debit Card,Pending
+ORD0165,2026-04-05,CUST037,Priya Verma,Webcam,Accessories,4,1706.84,North,Jaipur,UPI,Pending
+ORD0166,2026-01-11,CUST058,Kavya Nair,Headphones,Accessories,4,5726.57,Central,Nagpur,Credit Card,Completed
+ORD0167,2026-04-26,CUST014,Neha Reddy,Office Chair,Furniture,2,24239.0,Central,Indore,UPI,Pending
+ORD0168,2026-05-15,CUST067,Kavya Nair,Tablet,Electronics,4,49684.51,South,Hyderabad,Credit Card,Completed
+ORD0169,2026-06-23,CUST077,Aarav Sharma,Headphones,Accessories,4,7240.83,East,Bhubaneswar,Debit Card,Completed
+ORD0170,2026-06-18,CUST078,Rahul Singh,Office Chair,Furniture,4,12114.65,East,Kolkata,Debit Card,Completed
+ORD0171,2026-06-17,CUST051,Rahul Singh,Smartphone,Electronics,3,35683.21,Central,Nagpur,Cash,Cancelled
+ORD0172,2026-03-26,CUST017,Aditya Joshi,Office Chair,Furniture,4,18582.88,North,Jaipur,Cash,Completed
+ORD0173,2026-02-16,CUST028,Neha Reddy,Mouse,Accessories,1,1052.68,West,Ahmedabad,Net Banking,Completed
+ORD0174,2026-01-26,CUST065,Rohan Kumar,Smartphone,Electronics,1,34860.15,South,Hyderabad,Cash,Completed
+ORD0175,2026-02-11,CUST024,Pooja Shah,Smartphone,Electronics,5,39473.03,East,Patna,Cash,Completed
+ORD0176,2026-03-02,CUST057,Kavya Nair,Headphones,Accessories,3,6475.63,West,Mumbai,Debit Card,Cancelled
+ORD0177,2026-05-01,CUST025,Neha Reddy,Office Chair,Furniture,2,12570.42,West,Mumbai,Cash,Completed
+ORD0178,2026-02-11,CUST026,Kavya Nair,Headphones,Accessories,5,5314.19,West,Pune,Credit Card,Completed
+ORD0179,2026-01-27,CUST067,Priya Verma,Webcam,Accessories,3,4549.97,North,Chandigarh,Debit Card,Completed
+ORD0180,2026-04-22,CUST012,Ananya Gupta,Webcam,Accessories,5,2310.42,South,Bengaluru,Net Banking,Completed
+ORD0181,2026-03-02,CUST050,Priya Verma,Laptop,Electronics,4,75080.28,North,Jaipur,Debit Card,Completed
+ORD0182,2026-02-05,CUST005,Vikram Patel,Monitor,Electronics,3,25827.61,North,Jaipur,Net Banking,Cancelled
+ORD0183,2026-01-21,CUST003,Vikram Patel,Webcam,Accessories,4,4884.42,South,Chennai,Credit Card,Completed
+ORD0184,2026-03-15,CUST031,Vikram Patel,Desk,Furniture,5,12772.08,Central,Nagpur,UPI,Completed
+ORD0185,2026-01-29,CUST064,Kavya Nair,Backpack,Accessories,5,2937.03,South,Bengaluru,Cash,Completed
+ORD0186,2026-01-01,CUST079,Neha Reddy,Tablet,Electronics,2,25194.52,Central,Nagpur,Credit Card,Pending
+ORD0187,2026-04-03,CUST009,Rohan Kumar,Backpack,Accessories,1,3189.24,West,Mumbai,Cash,Pending
+ORD0188,2026-01-12,CUST050,Neha Reddy,Laptop,Electronics,4,89933.26,Central,Nagpur,Debit Card,Cancelled
+ORD0189,2026-06-18,CUST014,Kavya Nair,Monitor,Electronics,3,14822.52,North,Jaipur,Debit Card,Completed
+ORD0190,2026-02-14,CUST060,Pooja Shah,Office Chair,Furniture,3,21643.16,North,Jaipur,Net Banking,Cancelled
+ORD0191,2026-02-21,CUST006,Ananya Gupta,Monitor,Electronics,4,10739.68,South,Hyderabad,UPI,Completed
+ORD0192,2026-01-10,CUST025,Vikram Patel,Headphones,Accessories,5,4892.52,East,Patna,Debit Card,Completed
+ORD0193,2026-04-13,CUST057,Arjun Mehta,Monitor,Electronics,3,18739.03,East,Bhubaneswar,Debit Card,Completed
+ORD0194,2026-05-13,CUST035,Priya Verma,Webcam,Accessories,3,6583.71,West,Ahmedabad,Net Banking,Completed
+ORD0195,2026-01-27,CUST011,Neha Reddy,Smartphone,Electronics,5,34744.69,West,Ahmedabad,Debit Card,Completed
+ORD0196,2026-04-24,CUST045,Sneha Iyer,Printer,Electronics,4,11332.9,West,Ahmedabad,UPI,Cancelled
+ORD0197,2026-01-15,CUST010,Aditya Joshi,Headphones,Accessories,3,6187.86,East,Patna,Net Banking,Completed
+ORD0198,2026-02-06,CUST078,Aditya Joshi,Backpack,Accessories,2,4820.6,Central,Nagpur,Net Banking,Completed
+ORD0199,2026-05-26,CUST005,Kavya Nair,Tablet,Electronics,3,27675.27,South,Hyderabad,Credit Card,Cancelled
+ORD0200,2026-05-27,CUST018,Rohan Kumar,Mouse,Accessories,4,1773.55,West,Pune,Debit Card,Completed

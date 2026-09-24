@@ -1,0 +1,86 @@
+[
+  {
+    "question": "How many customers are there?",
+    "expected_sql": "SELECT COUNT(*) AS customer_count FROM customers;"
+  },
+  {
+    "question": "What is the total revenue?",
+    "expected_sql": "SELECT SUM(amount) AS total_revenue FROM orders;"
+  },
+  {
+    "question": "Show customers from India.",
+    "expected_sql": "SELECT customer_name FROM customers WHERE country = 'India';"
+  },
+  {
+    "question": "Show the top 5 customers by revenue.",
+    "expected_sql": "SELECT c.customer_name, SUM(o.amount) AS revenue FROM customers c JOIN orders o ON c.customer_id=o.customer_id GROUP BY c.customer_id, c.customer_name ORDER BY revenue DESC LIMIT 5;"
+  },
+  {
+    "question": "Show revenue by country.",
+    "expected_sql": "SELECT c.country, SUM(o.amount) AS revenue FROM customers c JOIN orders o ON c.customer_id=o.customer_id GROUP BY c.country ORDER BY revenue DESC;"
+  },
+  {
+    "question": "Show customer names and their orders.",
+    "expected_sql": "SELECT c.customer_name, o.order_id, o.amount FROM customers c JOIN orders o ON c.customer_id=o.customer_id ORDER BY c.customer_name;"
+  },
+  {
+    "question": "Which products generated the most sales?",
+    "expected_sql": "SELECT p.product_name, SUM(oi.quantity * oi.unit_price) AS sales FROM products p JOIN order_items oi ON p.product_id=oi.product_id GROUP BY p.product_id, p.product_name ORDER BY sales DESC;"
+  },
+  {
+    "question": "Show customers from India who spent more than 50000.",
+    "expected_sql": "SELECT c.customer_name, SUM(o.amount) AS total_spent FROM customers c JOIN orders o ON c.customer_id=o.customer_id WHERE c.country='India' GROUP BY c.customer_id,c.customer_name HAVING SUM(o.amount)>50000;"
+  },
+  {
+    "question": "What was the revenue in January 2025?",
+    "expected_sql": "SELECT SUM(amount) FROM orders WHERE order_date >= '2025-01-01' AND order_date < '2025-02-01';"
+  },
+  {
+    "question": "List all products in Electronics.",
+    "expected_sql": "SELECT product_name FROM products WHERE category='Electronics';"
+  },
+  {
+    "question": "How many orders were placed?",
+    "expected_sql": "SELECT COUNT(*) FROM orders;"
+  },
+  {
+    "question": "What is the average order amount?",
+    "expected_sql": "SELECT AVG(amount) FROM orders;"
+  },
+  {
+    "question": "Show the largest order.",
+    "expected_sql": "SELECT * FROM orders ORDER BY amount DESC LIMIT 1;"
+  },
+  {
+    "question": "Show UK customers.",
+    "expected_sql": "SELECT customer_name FROM customers WHERE country='UK';"
+  },
+  {
+    "question": "Show orders above 1000.",
+    "expected_sql": "SELECT * FROM orders WHERE amount > 1000 LIMIT 100;"
+  },
+  {
+    "question": "How many products are there?",
+    "expected_sql": "SELECT COUNT(*) FROM products;"
+  },
+  {
+    "question": "Show customer revenue sorted from highest to lowest.",
+    "expected_sql": "SELECT c.customer_name, SUM(o.amount) AS revenue FROM customers c JOIN orders o ON c.customer_id=o.customer_id GROUP BY c.customer_id,c.customer_name ORDER BY revenue DESC;"
+  },
+  {
+    "question": "Show orders with customer names.",
+    "expected_sql": "SELECT o.order_id,c.customer_name,o.order_date,o.amount FROM orders o JOIN customers c ON o.customer_id=c.customer_id;"
+  },
+  {
+    "question": "Which country has the highest revenue?",
+    "expected_sql": "SELECT c.country, SUM(o.amount) AS revenue FROM customers c JOIN orders o ON c.customer_id=o.customer_id GROUP BY c.country ORDER BY revenue DESC LIMIT 1;"
+  },
+  {
+    "question": "How many customers are from India?",
+    "expected_sql": "SELECT COUNT(*) FROM customers WHERE country='India';"
+  },
+  {
+    "question": "What is the highest product price?",
+    "expected_sql": "SELECT MAX(price) FROM products;"
+  }
+]
