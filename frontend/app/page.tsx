@@ -4,7 +4,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = process.env.NEXT_API_URL || "http://localhost:8000";
 
 const examples = [
   "Show the top 5 customers by revenue.",
