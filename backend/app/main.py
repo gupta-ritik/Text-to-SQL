@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
-from app.config import get_settings
+from app.config import get_cors_origins, get_settings
 
 
 @asynccontextmanager
@@ -24,14 +24,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-origins = [x.strip() for x in get_settings().cors_origins.split(",") if x.strip()]
-deployed_frontend = "https://text-to-sql-rho.vercel.app"
-if deployed_frontend not in origins:
-    origins.append(deployed_frontend)
+settings = get_settings()
+origins = get_cors_origins()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["http://localhost:3000"],
-    allow_origin_regex=r"https://[a-z0-9-]+\.vercel\.app",
+    allow_origin_regex=r"https://[a-z0-9-]+\.(vercel\.app|onrender\.com)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,5 +1,27 @@
+import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def normalize_origin(origin: str) -> str:
+    value = (origin or "").strip()
+    if not value:
+        return ""
+    return value.rstrip("/")
+
+
+def get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ORIGINS", "")
+    origins = [normalize_origin(item) for item in configured.split(",") if normalize_origin(item)]
+    defaults = [
+        "http://localhost:3000",
+        "https://text-to-sql-rho.vercel.app",
+        "https://text-to-sql-rho.onrender.com",
+    ]
+    for origin in defaults:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
 
 
 class Settings(BaseSettings):
@@ -29,7 +51,7 @@ class Settings(BaseSettings):
     min_faithfulness: float = 0.85
     deepeval_model: str = "gpt-4.1-mini"
 
-    cors_origins: str = "http://localhost:3000,https://text-to-sql-rho.vercel.app"
+    cors_origins: str = "http://localhost:3000,https://text-to-sql-rho.vercel.app,https://text-to-sql-rho.onrender.com"
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 
