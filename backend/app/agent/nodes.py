@@ -178,6 +178,8 @@ Execution result:
 
 def execute_error_or_success(state: AgentState) -> str:
     if state.get("sql_error"):
+        if state.get("retry_count", 0) >= get_settings().max_sql_retries:
+            return "process_result"
         return "repair"
     return "process_result"
 
