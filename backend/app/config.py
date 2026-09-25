@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
 
-    database_url: str = "sqlite:///../database/database.db"
+    database_url: str = "postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql"
 
     langsmith_tracing: bool = True
     langsmith_api_key: str = ""

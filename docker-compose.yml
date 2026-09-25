@@ -1,15 +1,35 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-texttosql}
+      POSTGRES_USER: ${POSTGRES_USER:-texttosql}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-texttosql}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
   backend:
     build:
       context: ./backend
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-texttosql}:${POSTGRES_PASSWORD:-texttosql}@postgres:5432/${POSTGRES_DB:-texttosql}
     volumes:
-      - ./database:/app/database
       - ./chroma:/app/chroma
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     command: >
       sh -c "python -m app.database.seed &&
              python -m app.rag.ingest &&
@@ -26,3 +46,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+volumes:
+  postgres_data:

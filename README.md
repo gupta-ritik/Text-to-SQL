@@ -24,7 +24,7 @@ LangGraph
 
 LangSmith → tracing/observability
 DeepEval  → offline RAG + answer evaluation
-SQLAlchemy → SQLite/PostgreSQL
+SQLAlchemy → PostgreSQL
 ```
 
 ## 1. Requirements
@@ -57,7 +57,7 @@ Edit `.env`:
 LLM_PROVIDER=groq
 GROQ_API_KEY=your_key
    GROQ_MODEL=llama-3.1-8b-instant
-DATABASE_URL=sqlite:///../database/database.db
+DATABASE_URL=postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql
    MAX_SQL_RETRIES=1
 ```
 
@@ -83,6 +83,15 @@ The PostgreSQL driver is included in `backend/requirements.txt`. Set these value
 Render's environment variables; do not commit API keys or database passwords.
 
 ## 3. Create the demo database
+
+The application uses PostgreSQL. Start it locally with Docker from the project root:
+
+```bash
+docker compose up -d postgres
+```
+
+For a hosted PostgreSQL instance, replace `DATABASE_URL` with its SQLAlchemy URL.
+The PostgreSQL driver is included in `backend/requirements.txt`.
 
 From `backend/`:
 
@@ -220,6 +229,9 @@ The tests include deterministic SQL-security checks and graph/API-level checks t
 ```bash
 docker compose up --build
 ```
+
+Compose starts PostgreSQL first, waits for it to become healthy, seeds the demo
+tables, and then starts the backend and frontend.
 
 Frontend: `http://localhost:3000`
 Backend: `http://localhost:8000`

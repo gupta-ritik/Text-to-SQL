@@ -48,7 +48,7 @@ def generate_sql(state: AgentState) -> AgentState:
     prompt = f"""{SQL_SYSTEM_PROMPT}
 
 DATABASE DIALECT:
-SQLAlchemy database dialect: sqlite/postgresql compatible SQL.
+PostgreSQL SQL (SQLAlchemy dialect: postgresql).
 
 USER QUESTION:
 {state['question']}

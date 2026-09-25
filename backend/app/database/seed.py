@@ -1,6 +1,7 @@
 from pathlib import Path
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from app.config import get_settings
+from app.database.connection import get_engine
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS departments (
@@ -102,7 +103,7 @@ def seed():
     if s.database_url.startswith("sqlite"):
         Path("../database").mkdir(exist_ok=True)
 
-    engine = create_engine(s.database_url, future=True)
+    engine = get_engine()
     with engine.begin() as conn:
         for statement in SCHEMA_SQL.split(";"):
             if statement.strip():
