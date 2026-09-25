@@ -15,6 +15,7 @@ def get_cors_origins() -> list[str]:
     origins = [normalize_origin(item) for item in configured.split(",") if normalize_origin(item)]
     defaults = [
         "http://localhost:3000",
+        "http://localhost:3001",
         "https://text-to-sql-rho.vercel.app",
         "https://text-to-sql-rho.onrender.com",
     ]

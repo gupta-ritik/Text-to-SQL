@@ -29,7 +29,7 @@ origins = get_cors_origins()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["http://localhost:3000"],
-    allow_origin_regex=r"https://[a-z0-9-]+\.(vercel\.app|onrender\.com)",
+    allow_origin_regex=r"https?://localhost(?::\d+)?|https://[a-z0-9-]+\.(vercel\.app|onrender\.com)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
