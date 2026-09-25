@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     chroma_path: str = "../chroma"
     chroma_collection: str = "schema_metadata"
 
-    max_sql_retries: int = 3
+    max_sql_retries: int = 1
     max_result_rows: int = 100
 
     min_execution_accuracy: float = 0.85

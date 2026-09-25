@@ -56,8 +56,9 @@ Edit `.env`:
 ```env
 LLM_PROVIDER=groq
 GROQ_API_KEY=your_key
-GROQ_MODEL=llama-3.3-70b-versatile
+   GROQ_MODEL=llama-3.1-8b-instant
 DATABASE_URL=sqlite:///../database/database.db
+   MAX_SQL_RETRIES=1
 ```
 
 If using OpenRouter:
@@ -69,6 +70,17 @@ OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct
 ```
 
 The model names are configurable; use a currently available model from your provider.
+
+For a low-cost deployment, use a free-tier Groq API key with a currently available
+small model such as `llama-3.1-8b-instant`, and use a free PostgreSQL provider such
+as Neon or Supabase. Set `DATABASE_URL` to the provider's SQLAlchemy URL, for example:
+
+```env
+DATABASE_URL=postgresql+psycopg://user:password@host/database?sslmode=require
+```
+
+The PostgreSQL driver is included in `backend/requirements.txt`. Set these values in
+Render's environment variables; do not commit API keys or database passwords.
 
 ## 3. Create the demo database
 
