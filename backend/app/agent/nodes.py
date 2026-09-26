@@ -65,7 +65,7 @@ TABLE RELATIONSHIPS:
     ])
     payload = _json_from_response(response.content)
     return {
-        "sql": payload.get("sql", "").strip(),
+        "sql": (payload.get("sql") or "").strip(),
         "tables_used": payload.get("tables_used", []),
         "metadata": {
             **state.get("metadata", {}),
@@ -116,7 +116,7 @@ Error:
     ])
     payload = _json_from_response(response.content)
     return {
-        "sql": payload.get("sql", "").strip(),
+        "sql": (payload.get("sql") or "").strip(),
         "tables_used": payload.get("tables_used", state.get("tables_used", [])),
         "retry_count": retries,
     }

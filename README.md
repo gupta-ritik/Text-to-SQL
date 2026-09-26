@@ -29,131 +29,159 @@ SQLAlchemy → PostgreSQL
 
 ## 1. Requirements
 
-- Python 3.11+
-- Node.js 20+
+- Docker Desktop (recommended for local setup)
+- Python 3.11+ for manual backend development
+- Node.js 20+ for manual frontend development
 - A Groq or OpenRouter API key
 - Optional LangSmith API key
 - Optional DeepEval/OpenAI-compatible judge configuration for evaluation
 
-## 2. Backend setup
+## Quick start with Docker
 
-```bash
-cd backend
-python -m venv .venv
+Docker Compose runs PostgreSQL, the FastAPI backend, and the Next.js frontend
+together. From the project root, make sure Docker Desktop is running and run:
 
-# Windows
-.venv\Scripts\activate
-
-# Linux/macOS
-# source .venv/bin/activate
-
-pip install -r requirements.txt
-copy .env.example .env
+```powershell
+docker compose up --build
 ```
 
-Edit `.env`:
+The root `.env` file must contain an LLM provider and API key, for example:
 
 ```env
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_key
-   GROQ_MODEL=llama-3.1-8b-instant
-DATABASE_URL=postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql
-   MAX_SQL_RETRIES=1
+GROQ_API_KEY=your_groq_api_key
 ```
 
-If using OpenRouter:
+Open the application at <http://localhost:3000>. The backend is available at
+<http://localhost:8000>, and its readiness endpoint is:
+
+```text
+http://localhost:8000/health
+```
+
+On the first start, the backend seeds PostgreSQL and builds the local Chroma
+schema index. This can take a few minutes while the embedding model loads.
+Wait until the Docker logs show `Uvicorn running on http://0.0.0.0:8000` before
+using the frontend. Then refresh the browser if it was opened earlier.
+
+To stop the services, press `Ctrl+C`. To run them in the background:
+
+```powershell
+docker compose up --build -d
+docker compose logs -f
+```
+
+The remaining sections describe manual development, dataset usage, and other
+project commands.
+
+## Manual development
+
+Use this mode when you want to run PostgreSQL in Docker but run the backend and
+frontend directly on your computer. You need Python 3.11+, Node.js 20+, and
+PowerShell or a similar terminal.
+
+### 1. Configure the environment
+
+Create or edit `.env` in the project root:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.1-8b-instant
+DATABASE_URL=postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql
+MAX_SQL_RETRIES=1
+```
+
+For OpenRouter, use these settings instead:
 
 ```env
 LLM_PROVIDER=openrouter
-OPENROUTER_API_KEY=your_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct
 ```
 
-The model names are configurable; use a currently available model from your provider.
+### 2. Start PostgreSQL
 
-For a low-cost deployment, use a free-tier Groq API key with a currently available
-small model such as `llama-3.1-8b-instant`, and use a free PostgreSQL provider such
-as Neon or Supabase. Set `DATABASE_URL` to the provider's SQLAlchemy URL, for example:
+From the project root, start only the database container:
 
-```env
-DATABASE_URL=postgresql+psycopg://user:password@host/database?sslmode=require
-```
-
-The PostgreSQL driver is included in `backend/requirements.txt`. Set these values in
-Render's environment variables; do not commit API keys or database passwords.
-
-## 3. Create the demo database
-
-The application uses PostgreSQL. Start it locally with Docker from the project root:
-
-```bash
+```powershell
 docker compose up -d postgres
 ```
 
-For a hosted PostgreSQL instance, replace `DATABASE_URL` with its SQLAlchemy URL.
-The PostgreSQL driver is included in `backend/requirements.txt`.
+Confirm that PostgreSQL is healthy before continuing:
 
-From `backend/`:
-
-```bash
-python -m app.database.seed
+```powershell
+docker compose ps
 ```
 
-This creates:
+### 3. Install and prepare the backend
 
-- customers
-- products
-- orders
-- order_items
-- employees
-- departments
+Open a new terminal:
 
-and inserts realistic demo data.
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-## 4. Build the schema RAG index
+Seed the demo tables and create the local Chroma schema index:
 
-```bash
+```powershell
+python -m app.database.seed
 python -m app.rag.ingest
 ```
 
-The database schema is converted into metadata documents and embedded into a local Chroma collection.
+The indexing command may take a few minutes the first time while the embedding
+model downloads.
 
-## 5. Run FastAPI
+### 4. Start the backend
 
-From `backend/`:
+Keep the backend terminal open and run:
 
-```bash
+```powershell
 uvicorn app.main:app --reload --port 8000
 ```
 
-API:
-- `POST http://localhost:8000/api/query`
-- `GET http://localhost:8000/api/schema`
-- `POST http://localhost:8000/api/evaluate`
-- `GET http://localhost:8000/health`
+Check that it is ready at <http://localhost:8000/health> before starting the
+frontend.
 
-## 6. Run frontend
+### 5. Install and start the frontend
 
-```bash
+Open a second terminal:
+
+```powershell
 cd frontend
 npm install
 copy .env.local.example .env.local
 npm run dev
 ```
 
-Open:
-
-```text
-http://localhost:3000
-```
-
-Set:
+The frontend uses `http://localhost:8000` by default. To set it explicitly,
+put this in `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## 7. Example questions
+Open <http://localhost:3000> when the frontend reports that it is ready.
+
+### Manual mode summary
+
+You should have three running processes:
+
+1. PostgreSQL in Docker on port `5432`.
+2. FastAPI on port `8000`.
+3. Next.js on port `3000`.
+
+Stop the backend and frontend with `Ctrl+C`. Stop PostgreSQL from the project
+root with:
+
+```powershell
+docker compose stop postgres
+```
+
+## Example questions
 
 ```text
 How many customers are there?
@@ -173,6 +201,17 @@ The final question is intentionally unsupported if the schema does not contain a
 ## Upload or select your own CSV dataset
 
 The frontend provides a **Dataset** panel. You can upload a new CSV or select a previously uploaded CSV.
+
+To upload a dataset locally:
+
+1. Open <http://localhost:3000> after the backend is ready.
+2. Click **Upload CSV** and choose a `.csv` file.
+3. Wait for the upload and **Indexing...** status to finish.
+4. Ask questions about the active dataset.
+
+Only CSV files are accepted. If the page shows `Failed to fetch`, check that
+the backend is running at <http://localhost:8000/health>, wait for startup
+indexing to finish, and refresh the frontend.
 
 Selecting a dataset automatically:
 1. Reads the CSV with Pandas.
@@ -195,7 +234,7 @@ What is the revenue by category?
 What is the average product price?
 ```
 
-## 8. Evaluation
+## Evaluation
 
 From the project root:
 
@@ -215,7 +254,7 @@ The evaluator:
 9. Writes `evaluation/reports/latest.json` and `latest.md`.
 10. Applies configurable quality thresholds.
 
-## 9. Tests
+## Tests
 
 ```bash
 cd backend
@@ -224,19 +263,7 @@ pytest -q
 
 The tests include deterministic SQL-security checks and graph/API-level checks that do not require an LLM key.
 
-## 10. Docker
-
-```bash
-docker compose up --build
-```
-
-Compose starts PostgreSQL first, waits for it to become healthy, seeds the demo
-tables, and then starts the backend and frontend.
-
-Frontend: `http://localhost:3000`
-Backend: `http://localhost:8000`
-
-## 11. Observability
+## Observability
 
 Set:
 
@@ -248,7 +275,7 @@ LANGSMITH_PROJECT=text-to-sql-agent
 
 LangChain/LangGraph runs will then be available in LangSmith. The application also records useful run metadata such as provider, model, retrieved tables, SQL, retries and execution time.
 
-## 12. Security model
+## Security model
 
 The application does not trust the LLM for SQL security. It applies deterministic validation before execution.
 
@@ -275,7 +302,7 @@ The demo executor also applies `MAX_RESULT_ROWS`.
 
 For production PostgreSQL, use a dedicated read-only database role in addition to application-level validation.
 
-## 13. Project structure
+## Project structure
 
 ```text
 text-to-sql-agent/
@@ -299,11 +326,8 @@ text-to-sql-agent/
 ├── frontend/
 ├── database/
 ├── chroma/
-├── .env.example
 ├── docker-compose.yml
 └── README.md
 ```
-
-## 14. Important note
 
 LangSmith is for observability/tracing; DeepEval is for offline/CI evaluation. They are intentionally kept separate in this project.
