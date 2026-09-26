@@ -118,9 +118,10 @@ Copy the URL from Neon with the password visible, then change only the URL
 scheme from `postgresql://` to `postgresql+psycopg://`. Do not commit the URL
 or expose the password in GitHub.
 
-The backend image seeds the database and builds the Chroma schema index before
-starting FastAPI. The first deploy can take a few minutes while the embedding
-model downloads.
+The backend binds to Render's assigned `PORT` immediately, then seeds the
+database and builds the Chroma schema index in the background. The first deploy
+can take a few minutes while the embedding model downloads. Wait for the logs
+to show `Ingested ... schema documents.` before sending Text-to-SQL queries.
 
 Copy the deployed backend URL, for example:
 

@@ -2,6 +2,7 @@ services:
   - type: web
     name: text-to-sql-backend
     runtime: docker
+    plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
