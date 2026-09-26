@@ -74,6 +74,72 @@ docker compose logs -f
 The remaining sections describe manual development, dataset usage, and other
 project commands.
 
+## Deploy the backend to Render and the frontend to Vercel
+
+Deploy the backend first so you have its public URL for the frontend.
+
+### 1. Deploy the backend on Render
+
+This repository includes `render.yaml` for a Render Blueprint deployment.
+
+1. Push the repository to GitHub.
+2. In Render, choose **New +** and then **Blueprint**.
+3. Select the GitHub repository and apply `render.yaml`.
+4. Set `GROQ_API_KEY` when Render asks for the secret value.
+5. Set `CORS_ORIGINS` to the Vercel URL you will use, for example:
+
+    ```text
+    https://your-project.vercel.app
+    ```
+
+6. Wait for the service health check at `/health` to pass.
+
+The Blueprint creates a Render PostgreSQL database and configures
+`DATABASE_URL` automatically. The backend image seeds the database and builds
+the Chroma schema index before starting FastAPI. The first deploy can take a
+few minutes while the embedding model downloads.
+
+Copy the deployed backend URL, for example:
+
+```text
+https://text-to-sql-backend.onrender.com
+```
+
+Verify it in a browser:
+
+```text
+https://text-to-sql-backend.onrender.com/health
+```
+
+### 2. Deploy the frontend on Vercel
+
+1. In Vercel, choose **Add New Project** and import the same GitHub repository.
+2. Set **Root Directory** to `frontend`.
+3. Leave the framework as **Next.js**.
+4. Add this production environment variable:
+
+    ```text
+    NEXT_PUBLIC_API_URL=https://text-to-sql-backend.onrender.com
+    ```
+
+5. Deploy the project.
+
+After Vercel gives you the production URL, update the Render
+`CORS_ORIGINS` value to that exact URL and redeploy or restart the Render
+service. Do not add a trailing slash.
+
+### Deployment notes
+
+- Keep `GROQ_API_KEY`, `OPENROUTER_API_KEY`, and database credentials in the
+   Render or Vercel environment settings, never in Git.
+- Render's free service may sleep when idle, so the first request can be slow.
+- Render's local filesystem is not permanent on redeploys. Uploaded CSV files
+   should be treated as temporary unless a persistent Render disk or external
+   storage is configured.
+- If the frontend shows `Failed to fetch`, verify the Vercel
+   `NEXT_PUBLIC_API_URL`, the Render `/health` endpoint, and the Render
+   `CORS_ORIGINS` value.
+
 ## Manual development
 
 Use this mode when you want to run PostgreSQL in Docker but run the backend and
@@ -327,6 +393,7 @@ text-to-sql-agent/
 ├── database/
 ├── chroma/
 ├── docker-compose.yml
+├── render.yaml
 └── README.md
 ```
 
