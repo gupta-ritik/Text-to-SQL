@@ -94,10 +94,18 @@ This repository includes `render.yaml` for a Render Blueprint deployment.
 
 6. Wait for the service health check at `/health` to pass.
 
-The Blueprint creates a Render PostgreSQL database and configures
-`DATABASE_URL` automatically. The backend image seeds the database and builds
-the Chroma schema index before starting FastAPI. The first deploy can take a
-few minutes while the embedding model downloads.
+The Blueprint creates the Render web service. Enter a PostgreSQL connection URL
+in the `DATABASE_URL` field when Render prompts for it. Render database pricing
+and free-tier availability can change, so a free external PostgreSQL provider
+such as Neon or Supabase can be used:
+
+```text
+postgresql+psycopg://user:password@host/database?sslmode=require
+```
+
+The backend image seeds the database and builds the Chroma schema index before
+starting FastAPI. The first deploy can take a few minutes while the embedding
+model downloads.
 
 Copy the deployed backend URL, for example:
 
@@ -132,6 +140,9 @@ service. Do not add a trailing slash.
 
 - Keep `GROQ_API_KEY`, `OPENROUTER_API_KEY`, and database credentials in the
    Render or Vercel environment settings, never in Git.
+- The Render backend can use the free web-service tier. A free PostgreSQL
+   provider may be separate from Render; confirm its current limits and sleep or
+   expiration policy before using it for production data.
 - Render's free service may sleep when idle, so the first request can be slow.
 - Render's local filesystem is not permanent on redeploys. Uploaded CSV files
    should be treated as temporary unless a persistent Render disk or external
