@@ -8,6 +8,8 @@ import shutil
 
 from app.agent.graph import agent_graph
 from app.database.schema import get_database_schema, schema_as_text
+from app.database.executor import execute_sql
+from app.security.sql_validator import validate_sql
 from app.config import get_settings
 
 router = APIRouter(prefix="/api", tags=["text-to-sql"])
@@ -15,6 +17,10 @@ router = APIRouter(prefix="/api", tags=["text-to-sql"])
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=2, max_length=2000)
+
+
+class SQLRequest(BaseModel):
+    sql: str = Field(min_length=1, max_length=20000)
 
 
 class QueryResponse(BaseModel):
@@ -74,6 +80,25 @@ def schema():
         "relationships": s["relationships"],
         "text": schema_as_text(s),
     }
+
+
+@router.post("/sql/execute")
+def execute_edited_sql(req: SQLRequest):
+    current_schema = get_database_schema()
+    allowed_tables = [table["table"] for table in current_schema["tables"]]
+    allowed_columns = [
+        f"{table['table']}.{column['name']}"
+        for table in current_schema["tables"]
+        for column in table["columns"]
+    ]
+    valid, message = validate_sql(req.sql, allowed_tables, allowed_columns)
+    if not valid:
+        raise HTTPException(status_code=400, detail=message)
+
+    try:
+        return {"sql": req.sql, "data": execute_sql(req.sql), "message": message}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"SQL execution failed: {exc}")
 
 
 

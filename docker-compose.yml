@@ -19,10 +19,7 @@ services:
     build:
       context: ./backend
     env_file:
-      - path: .env
-        required: false
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-texttosql}:${POSTGRES_PASSWORD:-texttosql}@postgres:5432/${POSTGRES_DB:-texttosql}
+      - .env
     volumes:
       - ./chroma:/app/chroma
       - ./datasets:/datasets

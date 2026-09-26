@@ -34,6 +34,17 @@ SQLAlchemy → PostgreSQL
 - Node.js 20+ for manual frontend development
 - A Groq or OpenRouter API key
 - Optional LangSmith API key
+
+## Features
+
+- Natural-language questions translated into read-only SQL
+- Schema retrieval with Chroma and LangGraph orchestration
+- CSV upload and dataset selection
+- Editable SQL preview with copy and execute actions
+- Deterministic SQL validation before every execution
+- Automatic result tables and numeric bar visualizations
+- Local query history with load, remove, clear, and rerun support
+- CSV export for query results
 - Optional DeepEval/OpenAI-compatible judge configuration for evaluation
 
 ## Quick start with Docker
@@ -94,14 +105,18 @@ This repository includes `render.yaml` for a Render Blueprint deployment.
 
 6. Wait for the service health check at `/health` to pass.
 
-The Blueprint creates the Render web service. Enter a PostgreSQL connection URL
-in the `DATABASE_URL` field when Render prompts for it. Render database pricing
-and free-tier availability can change, so a free external PostgreSQL provider
-such as Neon or Supabase can be used:
+The Blueprint creates the Render web service. Enter your Neon pooled connection
+URL in the `DATABASE_URL` field when Render prompts for it. The application
+already uses SQLAlchemy with the `psycopg` driver, so the Neon URL must start
+with `postgresql+psycopg://`:
 
 ```text
-postgresql+psycopg://user:password@host/database?sslmode=require
+postgresql+psycopg://neondb_owner:password@your-pooled-host.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
+
+Copy the URL from Neon with the password visible, then change only the URL
+scheme from `postgresql://` to `postgresql+psycopg://`. Do not commit the URL
+or expose the password in GitHub.
 
 The backend image seeds the database and builds the Chroma schema index before
 starting FastAPI. The first deploy can take a few minutes while the embedding
@@ -310,6 +325,22 @@ Show the top 5 products by revenue.
 What is the revenue by category?
 What is the average product price?
 ```
+
+## API reference
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Check backend readiness |
+| `POST` | `/api/query` | Run a natural-language question |
+| `POST` | `/api/sql/execute` | Validate and execute edited read-only SQL |
+| `GET` | `/api/schema` | Read the current database schema |
+| `GET` | `/api/datasets` | List available CSV datasets |
+| `POST` | `/api/datasets/upload` | Upload a CSV dataset |
+| `POST` | `/api/datasets/select` | Activate a dataset |
+| `GET` | `/api/datasets/index-status` | Check schema indexing status |
+
+Interactive API documentation is available at <http://localhost:8000/docs>
+when the backend is running.
 
 ## Evaluation
 

@@ -2,7 +2,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download } from "lucide-react";
+import { Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -14,6 +14,47 @@ const examples = [
   "Show customers from India who spent more than 50000."
 ];
 
+type HistoryItem = {
+  question: string;
+  answer: string;
+  sql: string;
+  timestamp: number;
+};
+
+function ResultChart({ data }: { data: any }) {
+  const columns = data?.columns || [];
+  const rows = data?.rows || [];
+  if (!columns.length || !rows.length) return null;
+
+  const numericIndex = columns.findIndex((_: string, index: number) =>
+    rows.some((row: any[]) => row[index] !== null && row[index] !== "" && Number.isFinite(Number(row[index])))
+  );
+  if (numericIndex < 0) return null;
+
+  const labelIndex = numericIndex === 0 && columns.length > 1 ? 1 : 0;
+  const values = rows.map((row: any[]) => Number(row[numericIndex]) || 0);
+  const maximum = Math.max(...values.map((value: number) => Math.abs(value)), 1);
+
+  return (
+    <div className="chart-wrap">
+      <div className="chart-bars">
+        {rows.slice(0, 12).map((row: any[], index: number) => {
+          const value = values[index];
+          const label = String(row[labelIndex] ?? `Row ${index + 1}`);
+          return (
+            <div className="chart-row" key={`${label}-${index}`}>
+              <span className="chart-label" title={label}>{label}</span>
+              <div className="chart-track"><div className="chart-bar" style={{ width: `${Math.max((Math.abs(value) / maximum) * 100, 2)}%` }} /></div>
+              <span className="chart-value">{value.toLocaleString()}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="chart-caption"><BarChart3 size={14} /> {columns[numericIndex]} by {columns[labelIndex]}</div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -23,7 +64,8 @@ export default function Home() {
   const [selectedDataset, setSelectedDataset] = useState("");
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
-  const [history, setHistory] = useState<{ question: string; answer: string; timestamp: number }[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [sqlDraft, setSqlDraft] = useState("");
 
   async function loadDatasets() {
     try {
@@ -116,9 +158,10 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Request failed");
       setResult(data);
+      setSqlDraft(data.sql || "");
       setHistory(previous => {
         const next = [
-          { question: reqQuestion, answer: data.answer || "", timestamp: Date.now() },
+          { question: reqQuestion, answer: data.answer || "", sql: data.sql || "", timestamp: Date.now() },
           ...previous.filter(item => item.question !== reqQuestion),
         ].slice(0, 6);
         localStorage.setItem("text-sql-history", JSON.stringify(next));
@@ -129,6 +172,55 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function runEditedSql() {
+    if (!sqlDraft.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/sql/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sql: sqlDraft })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "SQL execution failed");
+      setResult((previous: any) => ({
+        ...(previous || {}),
+        sql: sqlDraft,
+        data: data.data,
+        answer: "Edited SQL executed successfully.",
+        execution_time: data.data.execution_time,
+      }));
+    } catch (err: any) {
+      setError(err.message || "SQL execution failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copySql() {
+    if (sqlDraft) await navigator.clipboard.writeText(sqlDraft);
+  }
+
+  function rerunQuestion(item: HistoryItem) {
+    setQuestion(item.question);
+    setSqlDraft(item.sql || "");
+    setError("");
+  }
+
+  function removeHistory(timestamp: number) {
+    setHistory(previous => {
+      const next = previous.filter(item => item.timestamp !== timestamp);
+      localStorage.setItem("text-sql-history", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function clearHistory() {
+    localStorage.removeItem("text-sql-history");
+    setHistory([]);
   }
 
   useEffect(() => {
@@ -251,8 +343,14 @@ export default function Home() {
 
             <div className="grid">
               <div className="card">
-                <div className="label">GENERATED SQL</div>
-                <pre>{result.sql || "No SQL generated."}</pre>
+                <div className="result-heading">
+                  <div className="label">SQL PREVIEW & EDITOR</div>
+                  <div className="sql-actions">
+                    <button className="icon-btn" type="button" onClick={copySql} disabled={!sqlDraft} title="Copy SQL"><Copy size={15} /> Copy</button>
+                    <button className="icon-btn sql-run" type="button" onClick={runEditedSql} disabled={loading || !sqlDraft.trim()} title="Run edited SQL"><Play size={15} /> Run SQL</button>
+                  </div>
+                </div>
+                <textarea className="sql-editor" value={sqlDraft} onChange={e => setSqlDraft(e.target.value)} placeholder="Generated SQL will appear here." />
               </div>
               <div className="card">
                 <div className="result-heading">
@@ -275,18 +373,30 @@ export default function Home() {
                 ) : <p className="muted">No rows returned.</p>}
               </div>
             </div>
+            <div className="card chart-card">
+              <div className="label"><BarChart3 size={16} /> VISUALIZATION</div>
+              <ResultChart data={result.data} />
+              {!result.data?.rows?.length && <p className="muted">Run a query with numeric results to see a chart.</p>}
+            </div>
           </div>
         )}
 
         {history.length > 0 && (
           <div className="history card">
-            <div className="label"><History size={16} /> RECENT QUERIES</div>
+            <div className="history-heading">
+              <div className="label"><History size={16} /> QUERY HISTORY</div>
+              <button className="icon-btn" type="button" onClick={clearHistory} title="Clear query history"><Trash2 size={15} /> Clear</button>
+            </div>
             <div className="history-list">
               {history.map(item => (
-                <button className="history-item" type="button" key={item.timestamp} onClick={() => setQuestion(item.question)}>
+                <div className="history-item" key={item.timestamp}>
                   <span>{item.question}</span>
                   <small>{item.answer || "Query completed"}</small>
-                </button>
+                  <div className="history-actions">
+                    <button className="icon-btn" type="button" onClick={() => rerunQuestion(item)} title="Load query"><RotateCcw size={14} /> Load</button>
+                    <button className="icon-btn" type="button" onClick={() => removeHistory(item.timestamp)} title="Remove query"><Trash2 size={14} /></button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
