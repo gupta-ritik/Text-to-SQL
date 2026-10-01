@@ -8,6 +8,17 @@ import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
 
+function getGoogleTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const claims = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof claims.exp === "number" ? claims.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 function authHeaders(json = false): HeadersInit {
   const token = typeof window !== "undefined" ? localStorage.getItem("google-id-token") : null;
   return {
@@ -105,6 +116,20 @@ export default function Home() {
     toastTimer.current = window.setTimeout(() => setToast(null), 4200);
   }
 
+  function clearGoogleSession(message = "Your Google session expired. Please sign in again.") {
+    localStorage.removeItem("google-id-token");
+    setAuthUser(null);
+    setPendingCredential("");
+    captchaTokenRef.current = "";
+    setCaptchaToken("");
+    setAuthError(message);
+    setAuthLoading(false);
+    const recaptcha = (window as any).grecaptcha;
+    if (recaptchaWidgetId.current !== null && recaptcha?.reset) {
+      recaptcha.reset(recaptchaWidgetId.current);
+    }
+  }
+
   async function completeGoogleSignIn(credential: string, token = captchaToken) {
     token = token || captchaTokenRef.current;
     if (RECAPTCHA_SITE_KEY && !token) {
@@ -132,14 +157,7 @@ export default function Home() {
       if (err.name === "AbortError") {
         setAuthError("The backend is taking too long to respond. Please try signing in again.");
       } else if (err.message?.toLowerCase().includes("token expired") || err.message?.toLowerCase().includes("401")) {
-        localStorage.removeItem("google-id-token");
-        setPendingCredential("");
-        setCaptchaToken("");
-        setAuthError("Your Google session expired. Please click Continue with Google to sign in again.");
-        const recaptcha = (window as any).grecaptcha;
-        if (recaptchaWidgetId.current !== null && recaptcha?.reset) {
-          recaptcha.reset(recaptchaWidgetId.current);
-        }
+        clearGoogleSession("Your Google session expired. Please click Continue with Google to sign in again.");
       } else {
         setAuthError(err.message || "Google sign-in failed");
       }
@@ -334,6 +352,11 @@ export default function Home() {
   useEffect(() => {
     const savedCredential = localStorage.getItem("google-id-token");
     if (savedCredential) {
+      const expiresAt = getGoogleTokenExpiry(savedCredential);
+      if (expiresAt !== null && expiresAt <= Date.now()) {
+        clearGoogleSession();
+        return;
+      }
       if (RECAPTCHA_SITE_KEY) {
         setPendingCredential(savedCredential);
         setAuthError("Please complete the reCAPTCHA challenge before signing in.");
@@ -345,6 +368,16 @@ export default function Home() {
       setAuthLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const credential = localStorage.getItem("google-id-token");
+    const expiresAt = credential ? getGoogleTokenExpiry(credential) : null;
+    if (expiresAt === null) return;
+    const delay = Math.max(expiresAt - Date.now(), 0);
+    const timer = window.setTimeout(() => clearGoogleSession(), delay);
+    return () => window.clearTimeout(timer);
+  }, [authUser]);
 
   useEffect(() => {
     if (authUser) {
