@@ -155,7 +155,6 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
   const [pipelineStep, setPipelineStep] = useState(-1);
-  const pipelineTimer = useRef<number | null>(null);
 
   function showToast(message: string, tone: "success" | "error" | "info" = "info") {
     setToast({ message, tone });
@@ -316,18 +315,37 @@ export default function Home() {
     setLoading(true);
     setError("");
     setPipelineStep(0);
-    if (pipelineTimer.current) window.clearInterval(pipelineTimer.current);
-    pipelineTimer.current = window.setInterval(() => {
-      setPipelineStep(current => Math.min(current + 1, 4));
-    }, 900);
     try {
-      const res = await fetch(`${API}/api/query`, {
+      const res = await fetch(`${API}/api/query/stream`, {
         method: "POST",
         headers: authHeaders(true),
         body: JSON.stringify({ question: reqQuestion })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Request failed");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || "Request failed");
+      }
+      if (!res.body) throw new Error("Live query stream is unavailable. Please try again.");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let data: any = null;
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const event of events) {
+          const line = event.split("\n").find(value => value.startsWith("data: "));
+          if (!line) continue;
+          const payload = JSON.parse(line.slice(6));
+          if (payload.type === "progress") setPipelineStep(payload.step);
+          if (payload.type === "error") throw new Error(payload.message || "Request failed");
+          if (payload.type === "result") data = payload.result;
+        }
+      }
+      if (!data) throw new Error("The query stream ended before returning a result.");
       setResult(data);
       setSqlDraft(data.sql || "");
       setPipelineStep(5);
@@ -344,8 +362,6 @@ export default function Home() {
       setError(err.message || "Something went wrong");
       showToast(err.message || "Something went wrong.", "error");
     } finally {
-      if (pipelineTimer.current) window.clearInterval(pipelineTimer.current);
-      pipelineTimer.current = null;
       setLoading(false);
     }
   }

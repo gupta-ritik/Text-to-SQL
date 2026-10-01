@@ -1,6 +1,8 @@
 import time
 import uuid
+import json
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
 import re
@@ -56,41 +58,76 @@ class QueryResponse(BaseModel):
     metadata: dict = {}
 
 
+def _query_input(question: str, thread_id: str) -> tuple[dict, dict]:
+    return (
+        {"question": question, "retry_count": 0, "metadata": {}},
+        {
+            "configurable": {"thread_id": thread_id},
+            "tags": ["text-to-sql", get_settings().llm_provider],
+            "metadata": {"question": question},
+        },
+    )
+
+
+def _query_response(question: str, result: dict, started: float) -> QueryResponse:
+    return QueryResponse(
+        question=question,
+        sql=result.get("sql", ""),
+        retrieved_tables=result.get("retrieved_tables", []),
+        data=result.get("execution_result", {}),
+        answer=result.get("final_answer", ""),
+        execution_time=result.get("metadata", {}).get(
+            "execution_time",
+            round(time.perf_counter() - started, 4),
+        ),
+        retry_count=result.get("retry_count", 0),
+        error=result.get("sql_error") or None,
+        metadata=result.get("metadata", {}),
+    )
+
+
 @router.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest, _user: dict = Depends(require_google_user)):
     started = time.perf_counter()
     thread_id = str(uuid.uuid4())
 
     try:
-        result = agent_graph.invoke(
-            {
-                "question": req.question,
-                "retry_count": 0,
-                "metadata": {},
-            },
-            config={
-                "configurable": {"thread_id": thread_id},
-                "tags": ["text-to-sql", get_settings().llm_provider],
-                "metadata": {"question": req.question},
-            },
-        )
-
-        return QueryResponse(
-            question=req.question,
-            sql=result.get("sql", ""),
-            retrieved_tables=result.get("retrieved_tables", []),
-            data=result.get("execution_result", {}),
-            answer=result.get("final_answer", ""),
-            execution_time=result.get("metadata", {}).get(
-                "execution_time",
-                round(time.perf_counter() - started, 4),
-            ),
-            retry_count=result.get("retry_count", 0),
-            error=result.get("sql_error") or None,
-            metadata=result.get("metadata", {}),
-        )
+        inputs, config = _query_input(req.question, thread_id)
+        return _query_response(req.question, agent_graph.invoke(inputs, config=config), started)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/query/stream")
+def query_stream(req: QueryRequest, _user: dict = Depends(require_google_user)):
+    started = time.perf_counter()
+    thread_id = str(uuid.uuid4())
+
+    def events():
+        state: dict = {}
+        node_steps = {
+            "analyze_question": (0, "Capturing your question..."),
+            "retrieve_schema": (1, "Retrieving relevant schema..."),
+            "generate_sql": (2, "Generating safe SQL..."),
+            "validate_sql": (3, "Validating the query..."),
+            "repair_sql": (2, "Repairing the SQL query..."),
+            "execute_sql": (4, "Executing against your dataset..."),
+            "process_result": (4, "Processing query results..."),
+            "generate_answer": (5, "Preparing your answer..."),
+        }
+        try:
+            inputs, config = _query_input(req.question, thread_id)
+            for update in agent_graph.stream(inputs, config=config, stream_mode="updates"):
+                for node, node_state in update.items():
+                    state.update(node_state or {})
+                    step, message = node_steps.get(node, (0, "Working on your request..."))
+                    yield f"data: {json.dumps({'type': 'progress', 'step': step, 'message': message})}\n\n"
+            response = _query_response(req.question, state, started)
+            yield f"data: {json.dumps({'type': 'result', 'result': response.model_dump()})}\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.get("/schema")
