@@ -3,7 +3,6 @@ import hashlib
 import math
 import re
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from app.config import get_settings
 
 
@@ -34,6 +33,8 @@ def get_embeddings():
     settings = get_settings()
     if settings.embedding_provider.lower().strip() == "hash":
         return HashEmbeddings(settings.embedding_dimension)
+
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 
     return HuggingFaceEmbeddings(
         model_name=settings.embedding_model,
