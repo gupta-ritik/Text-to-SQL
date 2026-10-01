@@ -2,7 +2,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3 } from "lucide-react";
+import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -255,20 +255,35 @@ export default function Home() {
   return (
     <main className="page">
       <section className="hero">
-        <div className="brand">
+        <div className="topbar">
+          <div className="brand">
           <div className="logo"><Sparkles size={21} /></div>
           <span>TEXT•SQL AGENT</span>
+          </div>
+          <div className="system-status"><span className="status-dot" /> System ready</div>
         </div>
+        <div className="hero-kicker"><Activity size={14} /> INTELLIGENCE LAYER FOR YOUR DATA</div>
         <h1>Ask your database<br /><em>in plain English.</em></h1>
         <p className="subtitle">
           LangGraph orchestration · Schema RAG · Safe SQL · Error recovery · LangSmith · DeepEval
         </p>
+        <div className="hero-notes">
+          <span><ShieldCheck size={14} /> Read-only by design</span>
+          <span><Database size={14} /> Bring your own CSV</span>
+          <span><Activity size={14} /> Results in seconds</span>
+        </div>
       </section>
 
       <section className="workspace">
 
         <div className="dataset-card card">
-          <div className="label"><Database size={16} /> DATASET</div>
+          <div className="section-heading">
+            <div>
+              <div className="label"><Database size={16} /> DATASET</div>
+              <p className="section-copy">Choose the source your questions should explore.</p>
+            </div>
+            <span className="eyebrow">SOURCE 01</span>
+          </div>
           <div className="dataset-controls">
             <select value={selectedDataset} onChange={e => selectDataset(e.target.value)}>
               <option value="">Select a dataset...</option>
@@ -306,7 +321,13 @@ export default function Home() {
         </div>
 
         <div className="composer card">
-          <div className="label"><Database size={16} /> NATURAL LANGUAGE QUERY</div>
+          <div className="section-heading">
+            <div>
+              <div className="label"><Database size={16} /> NATURAL LANGUAGE QUERY</div>
+              <p className="section-copy">Describe the insight you need. The agent handles schema, SQL, and validation.</p>
+            </div>
+            <span className="eyebrow">ASK 02</span>
+          </div>
           <form onSubmit={submit}>
             <textarea
               value={question}
@@ -332,7 +353,7 @@ export default function Home() {
         {result && (
           <div className="results">
             <div className="answer card">
-              <div className="label"><Sparkles size={16} /> ANSWER</div>
+              <div className="result-kicker"><span className="answer-orb"><Sparkles size={15} /></span><span>ANSWER GENERATED</span></div>
               <div className="answer-text">{result.answer}</div>
               <div className="stats">
                 <span><Clock3 size={14} /> {result.execution_time ?? "-"}s</span>
