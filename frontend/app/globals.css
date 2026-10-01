@@ -98,6 +98,23 @@ th { color: var(--muted); background: #0b0f13; position: sticky; top: 0; }
 }
 .upload-btn:hover, .refresh-btn:hover { border-color: #3e4a58; }
 .dataset-meta { display: flex; align-items: center; gap: 5px; color: var(--muted); margin-top: 12px; font-size: 12px; }
+.toast { position: fixed; z-index: 20; top: 22px; right: 22px; display: flex; align-items: center; gap: 10px; max-width: min(390px, calc(100vw - 30px)); padding: 12px 12px 12px 10px; border: 1px solid rgba(151,161,173,.25); border-radius: 12px; color: var(--text); background: rgba(21,27,33,.96); box-shadow: 0 18px 55px rgba(0,0,0,.35); font-size: 12px; animation: toast-in .24s ease-out; }
+.toast-success { border-color: rgba(155,230,200,.5); }
+.toast-error { border-color: rgba(255,128,124,.55); }
+.toast-info { border-color: rgba(214,255,95,.45); }
+.toast-mark { display: grid; flex: 0 0 auto; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: #101810; background: var(--accent-soft); font-size: 13px; font-weight: 900; }
+.toast-error .toast-mark { color: #2a0d0d; background: var(--danger); }
+.toast-info .toast-mark { color: #142000; background: var(--accent); }
+.toast button { margin-left: 7px; padding: 0 3px; border: 0; color: var(--muted); background: transparent; font-size: 20px; line-height: 1; }
+.toast button:hover { color: var(--text); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.dataset-progress { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(151,161,173,.16); }
+.progress-heading { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 9px; color: #dce4e8; font-size: 12px; }
+.progress-heading strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.progress-track { height: 8px; overflow: hidden; border-radius: 99px; background: #080b0f; }
+.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--coral), var(--accent)); box-shadow: 0 0 16px rgba(214,255,95,.3); transition: width .4s ease; }
+.dataset-progress small { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.dataset-controls select:disabled, .refresh-btn:disabled { cursor: not-allowed; opacity: .55; }
 
 .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 20% 10%, rgba(214,255,95,.12), transparent 30%), radial-gradient(circle at 86% 80%, rgba(255,143,112,.1), transparent 28%), #0d1014; }
 .auth-panel { width: min(100%, 520px); padding: 42px; border: 1px solid rgba(151,161,173,.24); border-radius: 18px; background: linear-gradient(145deg, rgba(25,31,38,.97), rgba(15,19,24,.98)); box-shadow: 0 30px 100px rgba(0,0,0,.35); }

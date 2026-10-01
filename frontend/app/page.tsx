@@ -78,6 +78,8 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [googleReady, setGoogleReady] = useState(false);
   const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" | "info" } | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -86,8 +88,15 @@ export default function Home() {
   const [selectedDataset, setSelectedDataset] = useState("");
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
+  const [datasetProgress, setDatasetProgress] = useState(0);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
+
+  function showToast(message: string, tone: "success" | "error" | "info" = "info") {
+    setToast({ message, tone });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4200);
+  }
 
   async function completeGoogleSignIn(credential: string) {
     setAuthLoading(true);
@@ -138,8 +147,10 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not select dataset");
       setIndexing(true);
+      setDatasetProgress(70);
       void monitorIndex();
     } catch (err: any) {
+      setDatasetProgress(0);
       setError(err.message || "Dataset selection failed");
     }
   }
@@ -152,11 +163,15 @@ export default function Home() {
         const data = await res.json();
         if (data.status === "ready") {
           setIndexing(false);
+          setDatasetProgress(100);
+          showToast("Dataset indexed successfully.", "success");
           return;
         }
         if (data.status === "error") {
           setIndexing(false);
+          setDatasetProgress(0);
           setError(data.error || "Dataset indexing failed");
+          showToast(data.error || "Dataset indexing failed.", "error");
           return;
         }
       } catch {
@@ -166,11 +181,13 @@ export default function Home() {
       }
     }
     setIndexing(false);
+    setDatasetProgress(0);
     setError("Dataset indexing is taking longer than expected.");
   }
 
   async function uploadDataset(file: File) {
     setUploading(true);
+    setDatasetProgress(15);
     setError("");
     try {
       const form = new FormData();
@@ -182,10 +199,15 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Upload failed");
+      setUploading(false);
+      setDatasetProgress(45);
+      showToast("CSV uploaded. Preparing schema index...", "info");
       await loadDatasets();
       await selectDataset(data.dataset.name);
     } catch (err: any) {
+      setDatasetProgress(0);
       setError(err.message || "Dataset upload failed");
+      showToast(err.message || "Dataset upload failed.", "error");
     } finally {
       setUploading(false);
     }
@@ -207,6 +229,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.detail || "Request failed");
       setResult(data);
       setSqlDraft(data.sql || "");
+      showToast("Query completed successfully.", "success");
       setHistory(previous => {
         const next = [
           { question: reqQuestion, answer: data.answer || "", sql: data.sql || "", timestamp: Date.now() },
@@ -217,6 +240,7 @@ export default function Home() {
       });
     } catch (err: any) {
       setError(err.message || "Something went wrong");
+      showToast(err.message || "Something went wrong.", "error");
     } finally {
       setLoading(false);
     }
@@ -241,15 +265,20 @@ export default function Home() {
         answer: "Edited SQL executed successfully.",
         execution_time: data.data.execution_time,
       }));
+      showToast("Edited SQL executed successfully.", "success");
     } catch (err: any) {
       setError(err.message || "SQL execution failed");
+      showToast(err.message || "SQL execution failed.", "error");
     } finally {
       setLoading(false);
     }
   }
 
   async function copySql() {
-    if (sqlDraft) await navigator.clipboard.writeText(sqlDraft);
+    if (sqlDraft) {
+      await navigator.clipboard.writeText(sqlDraft);
+      showToast("SQL copied to clipboard.", "success");
+    }
   }
 
   function rerunQuestion(item: HistoryItem) {
@@ -366,6 +395,13 @@ export default function Home() {
 
   return (
     <main className="page">
+      {toast && (
+        <div className={`toast toast-${toast.tone}`} role="status" aria-live="polite">
+          <span className="toast-mark">{toast.tone === "success" ? "✓" : toast.tone === "error" ? "!" : "i"}</span>
+          <span>{toast.message}</span>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button>
+        </div>
+      )}
       <section className="hero">
         <div className="topbar">
           <div className="brand">
@@ -403,7 +439,7 @@ export default function Home() {
             <span className="eyebrow">SOURCE 01</span>
           </div>
           <div className="dataset-controls">
-            <select value={selectedDataset} onChange={e => selectDataset(e.target.value)}>
+            <select disabled={uploading || indexing} value={selectedDataset} onChange={e => selectDataset(e.target.value)}>
               <option value="">Select a dataset...</option>
               {datasets.map(d => (
                 <option key={d.name} value={d.name}>{d.name}</option>
@@ -426,10 +462,21 @@ export default function Home() {
               />
             </label>
 
-            <button className="refresh-btn" type="button" onClick={loadDatasets}>
+            <button className="refresh-btn" type="button" disabled={uploading || indexing} onClick={loadDatasets}>
               <RefreshCw size={15} /> Refresh
             </button>
           </div>
+
+          {(uploading || indexing) && (
+            <div className="dataset-progress" role="status" aria-live="polite">
+              <div className="progress-heading">
+                <span>{uploading ? "Uploading dataset..." : "Building schema index..."}</span>
+                <strong>{datasetProgress}%</strong>
+              </div>
+              <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
+              <small>{uploading ? "Sending your CSV to the secure workspace." : "Preparing the agent to answer questions about this dataset."}</small>
+            </div>
+          )}
 
           {selectedDataset && (
             <div className="dataset-meta">
