@@ -3,7 +3,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck } from "lucide-react";
+import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -49,36 +49,81 @@ type AuthUser = {
   picture?: string;
 };
 
-function ResultChart({ data }: { data: any }) {
+function formatMetric(value: number) {
+  return new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function isDateLike(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  return /\d{4}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(value);
+}
+
+function ResultAnalytics({ data }: { data: any }) {
   const columns = data?.columns || [];
   const rows = data?.rows || [];
   if (!columns.length || !rows.length) return null;
 
-  const numericIndex = columns.findIndex((_: string, index: number) =>
-    rows.some((row: any[]) => row[index] !== null && row[index] !== "" && Number.isFinite(Number(row[index])))
-  );
-  if (numericIndex < 0) return null;
+  const numericIndices = columns.reduce((indices: number[], _: string, index: number) => {
+    if (rows.some((row: any[]) => row[index] !== null && row[index] !== "" && Number.isFinite(Number(row[index])))) indices.push(index);
+    return indices;
+  }, []);
+  if (!numericIndices.length) return <p className="muted">No numeric values were returned for visualization.</p>;
 
-  const labelIndex = numericIndex === 0 && columns.length > 1 ? 1 : 0;
+  const numericIndex = numericIndices[0];
+  const labelIndex = columns.findIndex((_: string, index: number) => !numericIndices.includes(index));
+  const resolvedLabelIndex = labelIndex >= 0 ? labelIndex : numericIndex;
   const values = rows.map((row: any[]) => Number(row[numericIndex]) || 0);
+  const labels = rows.map((row: any[], index: number) => String(row[resolvedLabelIndex] ?? `Row ${index + 1}`));
+  const dateTrend = labels.length > 1 && labels.every(isDateLike);
   const maximum = Math.max(...values.map((value: number) => Math.abs(value)), 1);
+  const total = values.reduce((sum: number, value: number) => sum + value, 0);
+  const average = total / values.length;
+  const peakIndex = values.reduce((best: number, value: number, index: number) => value > values[best] ? index : best, 0);
+  const first = values[0];
+  const last = values[values.length - 1];
+  const change = first === 0 ? null : ((last - first) / Math.abs(first)) * 100;
+  const direction = change === null ? "changed" : change >= 0 ? "increased" : "decreased";
+  const insight = change === null
+    ? `${labels[peakIndex]} recorded the highest ${columns[numericIndex]} at ${formatMetric(values[peakIndex])}.`
+    : `${columns[numericIndex]} ${direction} ${Math.abs(change).toFixed(1)}% from ${labels[0]} to ${labels[labels.length - 1]}.`;
+  const trendValues = values.slice(0, 12);
+  const trendMinimum = Math.min(...trendValues);
+  const trendRange = Math.max(...trendValues) - trendMinimum || 1;
+  const trendPoints = trendValues.map((value: number, index: number) => `${(index / Math.max(trendValues.length - 1, 1)) * 100},${100 - ((value - trendMinimum) / trendRange) * 82 - 9}`).join(" ");
 
   return (
-    <div className="chart-wrap">
-      <div className="chart-bars">
-        {rows.slice(0, 12).map((row: any[], index: number) => {
-          const value = values[index];
-          const label = String(row[labelIndex] ?? `Row ${index + 1}`);
-          return (
-            <div className="chart-row" key={`${label}-${index}`}>
-              <span className="chart-label" title={label}>{label}</span>
-              <div className="chart-track"><div className="chart-bar" style={{ width: `${Math.max((Math.abs(value) / maximum) * 100, 2)}%` }} /></div>
-              <span className="chart-value">{value.toLocaleString()}</span>
-            </div>
-          );
-        })}
+    <div className="analytics-wrap">
+      <div className="kpi-grid">
+        <div className="kpi-card"><span>Total {columns[numericIndex]}</span><strong>{formatMetric(total)}</strong><small>{rows.length} rows</small></div>
+        <div className="kpi-card"><span>Average</span><strong>{formatMetric(average)}</strong><small>per row</small></div>
+        <div className="kpi-card"><span>Peak</span><strong>{formatMetric(values[peakIndex])}</strong><small>{labels[peakIndex]}</small></div>
+        <div className={`kpi-card ${change !== null && change >= 0 ? "kpi-positive" : ""}`}><span><TrendingUp size={13} /> Trend</span><strong>{change === null ? "N/A" : `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`}</strong><small>{dateTrend ? "first to last period" : "first to last row"}</small></div>
       </div>
-      <div className="chart-caption"><BarChart3 size={14} /> {columns[numericIndex]} by {columns[labelIndex]}</div>
+      <div className="insight-callout"><Lightbulb size={17} /><div><strong>Key insight</strong><span>{insight}</span></div></div>
+      <div className="chart-header"><span>{dateTrend ? "Trend over time" : "Best-fit comparison"}</span><small>{columns[numericIndex]} by {columns[resolvedLabelIndex]}</small></div>
+      {dateTrend ? (
+        <div className="trend-chart">
+          <svg viewBox="0 0 100 110" preserveAspectRatio="none" role="img" aria-label={`${columns[numericIndex]} trend chart`}>
+            <polyline points={trendPoints} fill="none" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <div className="trend-labels">{labels.slice(0, 12).map((label: string, index: number) => <span key={`${label}-${index}`}>{label}</span>)}</div>
+        </div>
+      ) : (
+        <div className="chart-bars">
+          {rows.slice(0, 12).map((row: any[], index: number) => {
+            const value = values[index];
+            const label = labels[index];
+            return (
+              <div className="chart-row" key={`${label}-${index}`}>
+                <span className="chart-label" title={label}>{label}</span>
+                <div className="chart-track"><div className="chart-bar" style={{ width: `${Math.max((Math.abs(value) / maximum) * 100, 2)}%` }} /></div>
+                <span className="chart-value">{value.toLocaleString()}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="chart-caption"><BarChart3 size={14} /> Automatically selected from the returned data</div>
     </div>
   );
 }
@@ -677,8 +722,8 @@ export default function Home() {
               </div>
             </div>
             <div className="card chart-card">
-              <div className="label"><BarChart3 size={16} /> VISUALIZATION</div>
-              <ResultChart data={result.data} />
+              <div className="label"><BarChart3 size={16} /> ANALYTICS</div>
+              <ResultAnalytics data={result.data} />
               {!result.data?.rows?.length && <p className="muted">Run a query with numeric results to see a chart.</p>}
             </div>
           </div>
