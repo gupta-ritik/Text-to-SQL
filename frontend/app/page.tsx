@@ -108,23 +108,30 @@ export default function Home() {
     if (RECAPTCHA_SITE_KEY && !token) {
       setPendingCredential(credential);
       setAuthError("Please complete the reCAPTCHA challenge before signing in.");
+      setAuthLoading(false);
       return;
     }
     setAuthLoading(true);
     setAuthError("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
     try {
       const res = await fetch(`${API}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential, captcha_token: token }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Google sign-in failed");
       localStorage.setItem("google-id-token", credential);
       setAuthUser(data.user);
     } catch (err: any) {
-      setAuthError(err.message || "Google sign-in failed");
+      setAuthError(err.name === "AbortError"
+        ? "The backend is taking too long to respond. Please try signing in again."
+        : err.message || "Google sign-in failed");
     } finally {
+      window.clearTimeout(timeout);
       setAuthLoading(false);
     }
   }

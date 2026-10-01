@@ -15,6 +15,10 @@ services:
         value: llama-3.1-8b-instant
       - key: GROQ_API_KEY
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: RECAPTCHA_SECRET_KEY
+        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: LANGSMITH_TRACING
