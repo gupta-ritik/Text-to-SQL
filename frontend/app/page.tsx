@@ -321,7 +321,13 @@ export default function Home() {
   useEffect(() => {
     const savedCredential = localStorage.getItem("google-id-token");
     if (savedCredential) {
-      void completeGoogleSignIn(savedCredential);
+      if (RECAPTCHA_SITE_KEY) {
+        setPendingCredential(savedCredential);
+        setAuthError("Please complete the reCAPTCHA challenge before signing in.");
+        setAuthLoading(false);
+      } else {
+        void completeGoogleSignIn(savedCredential);
+      }
     } else {
       setAuthLoading(false);
     }
@@ -358,20 +364,33 @@ export default function Home() {
 
   useEffect(() => {
     if (!RECAPTCHA_SITE_KEY || authUser || !recaptchaScriptLoaded || !recaptchaRef.current || recaptchaWidgetId.current !== null) return;
-    const recaptcha = (window as any).grecaptcha;
-    if (!recaptcha?.render) return;
-    recaptchaWidgetId.current = recaptcha.render(recaptchaRef.current, {
-      sitekey: RECAPTCHA_SITE_KEY,
-      callback: (token: string) => {
-        setCaptchaToken(token);
-        setPendingCredential(credential => {
-          if (credential) void completeGoogleSignIn(credential, token);
-          return "";
-        });
-      },
-      "expired-callback": () => setCaptchaToken(""),
-      "error-callback": () => setCaptchaToken(""),
-    });
+    let attempts = 0;
+    let retryTimer: number | null = null;
+    const renderRecaptcha = () => {
+      const recaptcha = (window as any).grecaptcha;
+      if (!recaptcha?.render) {
+        attempts += 1;
+        if (attempts < 20) retryTimer = window.setTimeout(renderRecaptcha, 250);
+        else setAuthError("reCAPTCHA could not load. Refresh the page and try again.");
+        return;
+      }
+      recaptchaWidgetId.current = recaptcha.render(recaptchaRef.current, {
+        sitekey: RECAPTCHA_SITE_KEY,
+        callback: (token: string) => {
+          setCaptchaToken(token);
+          setPendingCredential(credential => {
+            if (credential) void completeGoogleSignIn(credential, token);
+            return "";
+          });
+        },
+        "expired-callback": () => setCaptchaToken(""),
+        "error-callback": () => setCaptchaToken(""),
+      });
+    };
+    renderRecaptcha();
+    return () => {
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
   }, [authUser, recaptchaScriptLoaded]);
 
   useEffect(() => {
