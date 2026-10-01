@@ -154,6 +154,8 @@ export default function Home() {
   const [datasetProgress, setDatasetProgress] = useState(0);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
+  const [pipelineStep, setPipelineStep] = useState(-1);
+  const pipelineTimer = useRef<number | null>(null);
 
   function showToast(message: string, tone: "success" | "error" | "info" = "info") {
     setToast({ message, tone });
@@ -313,6 +315,11 @@ export default function Home() {
     if (!reqQuestion) return;
     setLoading(true);
     setError("");
+    setPipelineStep(0);
+    if (pipelineTimer.current) window.clearInterval(pipelineTimer.current);
+    pipelineTimer.current = window.setInterval(() => {
+      setPipelineStep(current => Math.min(current + 1, 4));
+    }, 900);
     try {
       const res = await fetch(`${API}/api/query`, {
         method: "POST",
@@ -323,6 +330,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.detail || "Request failed");
       setResult(data);
       setSqlDraft(data.sql || "");
+      setPipelineStep(5);
       showToast("Query completed successfully.", "success");
       setHistory(previous => {
         const next = [
@@ -336,6 +344,8 @@ export default function Home() {
       setError(err.message || "Something went wrong");
       showToast(err.message || "Something went wrong.", "error");
     } finally {
+      if (pipelineTimer.current) window.clearInterval(pipelineTimer.current);
+      pipelineTimer.current = null;
       setLoading(false);
     }
   }
@@ -517,6 +527,7 @@ export default function Home() {
     setQuestion("");
     setResult(null);
     setError("");
+    setPipelineStep(-1);
   }
 
   if (authLoading) {
@@ -751,12 +762,22 @@ export default function Home() {
         )}
 
         <div className="pipeline card">
-          <div className="label">AGENT PIPELINE</div>
+          <div className="pipeline-heading">
+            <div className="label">AGENT PIPELINE</div>
+            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 5 ? "is-complete" : ""}`}>
+              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 5 ? "COMPLETE" : "READY"}
+            </span>
+          </div>
           <div className="steps">
             {["Question", "Schema RAG", "SQL", "Validate", "Execute", "Answer"].map((s, i) => (
-              <div className="step" key={s}><span>{i + 1}</span>{s}</div>
+              <div className={`step ${pipelineStep === i ? "is-active" : ""} ${pipelineStep > i ? "is-complete" : ""}`} key={s}>
+                <span>{pipelineStep > i ? "✓" : i + 1}</span>{s}
+              </div>
             ))}
           </div>
+          <p className="pipeline-status">
+            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Executing against your dataset...", "Preparing your answer..."][pipelineStep] : pipelineStep === 5 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
+          </p>
         </div>
 
         <button className="reset" onClick={reset}>Reset workspace</button>
