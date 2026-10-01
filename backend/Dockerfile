@@ -10,4 +10,4 @@ COPY start.sh ./start.sh
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
-CMD ["sh", "./start.sh"]
+ENTRYPOINT ["sh", "./start.sh"]

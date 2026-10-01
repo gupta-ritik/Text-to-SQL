@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     vector_db: str = "chroma"
     schema_top_k: int = 5
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_provider: str = "huggingface"
+    embedding_dimension: int = 384
     chroma_path: str = "../chroma"
     chroma_collection: str = "schema_metadata"
 
