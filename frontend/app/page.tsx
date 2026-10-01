@@ -2,6 +2,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Script from "next/script";
 import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -76,6 +77,7 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [googleReady, setGoogleReady] = useState(false);
+  const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -285,7 +287,7 @@ export default function Home() {
   }, [authUser]);
 
   useEffect(() => {
-    if (!googleButtonRef.current || authUser) return;
+    if (!googleButtonRef.current || authUser || !googleScriptLoaded) return;
 
     const initialize = () => {
       const google = (window as any).google;
@@ -304,12 +306,8 @@ export default function Home() {
       return true;
     };
 
-    if (initialize()) return;
-    const timer = window.setInterval(() => {
-      if (initialize()) window.clearInterval(timer);
-    }, 200);
-    return () => window.clearInterval(timer);
-  }, [authUser]);
+    initialize();
+  }, [authUser, googleScriptLoaded]);
 
   useEffect(() => {
     try {
@@ -346,6 +344,12 @@ export default function Home() {
   if (!authUser) {
     return (
       <main className="auth-page">
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+          onLoad={() => setGoogleScriptLoaded(true)}
+          onError={() => setAuthError("Google sign-in could not load. Check your network or ad blocker.")}
+        />
         <div className="auth-panel">
           <div className="logo"><Sparkles size={21} /></div>
           <p className="auth-kicker">TEXT•SQL AGENT</p>
