@@ -97,7 +97,9 @@ This repository includes `render.yaml` for a Render Blueprint deployment.
 2. In Render, choose **New +** and then **Blueprint**.
 3. Select the GitHub repository and apply `render.yaml`.
 4. Set `GROQ_API_KEY` when Render asks for the secret value.
-5. Set `CORS_ORIGINS` to the Vercel URL you will use, for example:
+5. Set `GOOGLE_CLIENT_ID` and `RECAPTCHA_SECRET_KEY` when Render asks for the
+   authentication secrets.
+6. Set `CORS_ORIGINS` to the Vercel URL you will use, for example:
 
     ```text
     https://your-project.vercel.app
@@ -146,6 +148,10 @@ https://text-to-sql-backend.onrender.com/health
     NEXT_PUBLIC_API_URL=https://text-to-sql-backend.onrender.com
     ```
 
+   Also add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and
+   `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` in Vercel. Create matching Google OAuth and
+   reCAPTCHA v2 checkbox credentials for the deployed frontend domain.
+
 5. Deploy the project.
 
 After Vercel gives you the production URL, update the Render
@@ -183,6 +189,8 @@ GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=llama-3.1-8b-instant
 DATABASE_URL=postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql
 MAX_SQL_RETRIES=1
+GOOGLE_CLIENT_ID=your_google_client_id
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
 ```
 
 For OpenRouter, use these settings instead:

@@ -11,7 +11,7 @@ from app.database.schema import get_database_schema, schema_as_text
 from app.database.executor import execute_sql
 from app.security.sql_validator import validate_sql
 from app.config import get_settings
-from app.security.google_auth import require_google_user, verify_google_credential
+from app.security.google_auth import require_google_user, verify_google_credential, verify_recaptcha
 
 router = APIRouter(prefix="/api", tags=["text-to-sql"])
 
@@ -26,10 +26,12 @@ class SQLRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     credential: str = Field(min_length=20, max_length=10000)
+    captcha_token: str = Field(default="", max_length=4000)
 
 
 @router.post("/auth/google")
 def google_auth(req: GoogleAuthRequest):
+    verify_recaptcha(req.captcha_token)
     claims = verify_google_credential(req.credential)
 
     return {
