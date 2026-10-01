@@ -182,7 +182,7 @@ h1 em { color: var(--accent); text-shadow: 0 0 32px rgba(214,255,95,.16); }
 .answer { border: 1px solid rgba(155,230,200,.3); border-left: 4px solid var(--accent-soft); background: linear-gradient(135deg, rgba(26,43,39,.95), rgba(18,25,29,.98)); }
 .result-kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 17px; color: var(--accent-soft); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .answer-orb { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 9px; color: #10201a; background: var(--accent-soft); }
-.answer-text { max-width: 820px; font-size: clamp(22px, 3vw, 31px); line-height: 1.28; letter-spacing: -.02em; }
+.answer-text { max-width: 820px; font-size: clamp(22px, 3vw, 31px); line-height: 1.28; letter-spacing: -.02em; white-space: pre-line; }
 .stats { padding-top: 15px; border-top: 1px solid rgba(151,161,173,.16); }
 .grid { gap: 20px; }
 .table-wrap { border-color: rgba(151,161,173,.2); }

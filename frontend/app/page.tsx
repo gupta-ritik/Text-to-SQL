@@ -58,6 +58,15 @@ function isDateLike(value: unknown) {
   return /\d{4}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(value);
 }
 
+function formatAnswer(answer: string) {
+  return answer
+    .split("\n")
+    .filter(line => !/^\s*\|?\s*:?-{2,}/.test(line))
+    .map(line => line.includes("|") ? line.split("|").map(part => part.trim()).filter(Boolean).join("  •  ") : line.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 function ResultAnalytics({ data }: { data: any }) {
   const columns = data?.columns || [];
   const rows = data?.rows || [];
@@ -702,13 +711,32 @@ export default function Home() {
           </form>
         </div>
 
+        <div className="pipeline card">
+          <div className="pipeline-heading">
+            <div className="label">AGENT PIPELINE</div>
+            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 5 ? "is-complete" : ""}`}>
+              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 5 ? "COMPLETE" : "READY"}
+            </span>
+          </div>
+          <div className="steps">
+            {["Question", "Schema RAG", "SQL", "Validate", "Execute", "Answer"].map((s, i) => (
+              <div className={`step ${pipelineStep === i ? "is-active" : ""} ${pipelineStep > i ? "is-complete" : ""}`} key={s}>
+                <span>{pipelineStep > i ? "✓" : i + 1}</span>{s}
+              </div>
+            ))}
+          </div>
+          <p className="pipeline-status">
+            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Executing against your dataset...", "Preparing your answer..."][pipelineStep] : pipelineStep === 5 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
+          </p>
+        </div>
+
         {error && <div className="error card">{error}</div>}
 
         {result && (
           <div className="results">
             <div className="answer card">
               <div className="result-kicker"><span className="answer-orb"><Sparkles size={15} /></span><span>ANSWER GENERATED</span></div>
-              <div className="answer-text">{result.answer}</div>
+              <div className="answer-text">{formatAnswer(result.answer || "No answer returned.")}</div>
               <div className="stats">
                 <span><Clock3 size={14} /> {result.execution_time ?? "-"}s</span>
                 <span><RotateCcw size={14} /> {result.retry_count} retries</span>
@@ -776,25 +804,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        <div className="pipeline card">
-          <div className="pipeline-heading">
-            <div className="label">AGENT PIPELINE</div>
-            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 5 ? "is-complete" : ""}`}>
-              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 5 ? "COMPLETE" : "READY"}
-            </span>
-          </div>
-          <div className="steps">
-            {["Question", "Schema RAG", "SQL", "Validate", "Execute", "Answer"].map((s, i) => (
-              <div className={`step ${pipelineStep === i ? "is-active" : ""} ${pipelineStep > i ? "is-complete" : ""}`} key={s}>
-                <span>{pipelineStep > i ? "✓" : i + 1}</span>{s}
-              </div>
-            ))}
-          </div>
-          <p className="pipeline-status">
-            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Executing against your dataset...", "Preparing your answer..."][pipelineStep] : pipelineStep === 5 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
-          </p>
-        </div>
 
         <button className="reset" onClick={reset}>Reset workspace</button>
       </section>
