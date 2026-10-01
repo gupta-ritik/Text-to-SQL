@@ -1,10 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function authHeaders(json = false): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("google-id-token") : null;
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 const examples = [
   "Show the top 5 customers by revenue.",
@@ -19,6 +27,13 @@ type HistoryItem = {
   answer: string;
   sql: string;
   timestamp: number;
+};
+
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  picture?: string;
 };
 
 function ResultChart({ data }: { data: any }) {
@@ -56,6 +71,10 @@ function ResultChart({ data }: { data: any }) {
 }
 
 export default function Home() {
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -67,12 +86,37 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
 
+  async function completeGoogleSignIn(credential: string) {
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`${API}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Google sign-in failed");
+      localStorage.setItem("google-id-token", credential);
+      setAuthUser(data.user);
+    } catch (err: any) {
+      setAuthError(err.message || "Google sign-in failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  function signOut() {
+    localStorage.removeItem("google-id-token");
+    setAuthUser(null);
+  }
+
   async function loadDatasets() {
     try {
-      const res = await fetch(`${API}/api/datasets`);
+      const res = await fetch(`${API}/api/datasets`, { headers: authHeaders() });
       const data = await res.json();
       setDatasets(data.datasets || []);
-      const selected = await fetch(`${API}/api/datasets/selected`);
+      const selected = await fetch(`${API}/api/datasets/selected`, { headers: authHeaders() });
       const selectedData = await selected.json();
       setSelectedDataset(selectedData.selected_dataset || "");
     } catch {}
@@ -85,7 +129,7 @@ export default function Home() {
     try {
       const res = await fetch(`${API}/api/datasets/select`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify({ name })
       });
       const data = await res.json();
@@ -101,7 +145,7 @@ export default function Home() {
     for (let attempt = 0; attempt < 120; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       try {
-        const res = await fetch(`${API}/api/datasets/index-status`);
+        const res = await fetch(`${API}/api/datasets/index-status`, { headers: authHeaders() });
         const data = await res.json();
         if (data.status === "ready") {
           setIndexing(false);
@@ -130,6 +174,7 @@ export default function Home() {
       form.append("file", file);
       const res = await fetch(`${API}/api/datasets/upload`, {
         method: "POST",
+        headers: authHeaders(),
         body: form
       });
       const data = await res.json();
@@ -152,7 +197,7 @@ export default function Home() {
     try {
       const res = await fetch(`${API}/api/query`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify({ question: reqQuestion })
       });
       const data = await res.json();
@@ -181,7 +226,7 @@ export default function Home() {
     try {
       const res = await fetch(`${API}/api/sql/execute`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(true),
         body: JSON.stringify({ sql: sqlDraft })
       });
       const data = await res.json();
@@ -224,7 +269,47 @@ export default function Home() {
   }
 
   useEffect(() => {
-    loadDatasets();
+    const savedCredential = localStorage.getItem("google-id-token");
+    if (savedCredential) {
+      void completeGoogleSignIn(savedCredential);
+    } else {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authUser) {
+      loadDatasets();
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!googleButtonRef.current || authUser) return;
+
+    const initialize = () => {
+      const google = (window as any).google;
+      if (!google?.accounts?.id || !googleButtonRef.current) return false;
+      google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        callback: (response: { credential: string }) => void completeGoogleSignIn(response.credential),
+      });
+      google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        width: 280,
+        text: "continue_with",
+      });
+      return true;
+    };
+
+    if (initialize()) return;
+    const timer = window.setInterval(() => {
+      if (initialize()) window.clearInterval(timer);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [authUser]);
+
+  useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("text-sql-history") || "[]");
       if (Array.isArray(saved)) setHistory(saved);
@@ -252,6 +337,26 @@ export default function Home() {
     setError("");
   }
 
+  if (authLoading) {
+    return <main className="auth-page"><div className="auth-panel"><div className="logo"><Sparkles size={21} /></div><p className="auth-kicker">TEXT•SQL AGENT</p><h1>Preparing your workspace.</h1><p className="auth-muted">Verifying your session...</p></div></main>;
+  }
+
+  if (!authUser) {
+    return (
+      <main className="auth-page">
+        <div className="auth-panel">
+          <div className="logo"><Sparkles size={21} /></div>
+          <p className="auth-kicker">TEXT•SQL AGENT</p>
+          <h1>Ask your database<br /><em>in plain English.</em></h1>
+          <p className="auth-muted">Sign in securely with Google to access your natural-language data workspace.</p>
+          <div className="google-button" ref={googleButtonRef} />
+          {authError && <p className="auth-error">{authError}</p>}
+          {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <p className="auth-error">Google sign-in is not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID in Vercel.</p>}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="page">
       <section className="hero">
@@ -260,7 +365,13 @@ export default function Home() {
           <div className="logo"><Sparkles size={21} /></div>
           <span>TEXT•SQL AGENT</span>
           </div>
-          <div className="system-status"><span className="status-dot" /> System ready</div>
+          <div className="account-area">
+            <div className="system-status"><span className="status-dot" /> System ready</div>
+            <button className="account-button" type="button" onClick={signOut} title="Sign out">
+              {authUser.picture ? <img src={authUser.picture} alt="" /> : <span>{authUser.name.charAt(0)}</span>}
+              <b>{authUser.name}</b>
+            </button>
+          </div>
         </div>
         <div className="hero-kicker"><Activity size={14} /> INTELLIGENCE LAYER FOR YOUR DATA</div>
         <h1>Ask your database<br /><em>in plain English.</em></h1>

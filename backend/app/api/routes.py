@@ -1,6 +1,6 @@
 import time
 import uuid
-from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from pathlib import Path
 import re
@@ -11,6 +11,7 @@ from app.database.schema import get_database_schema, schema_as_text
 from app.database.executor import execute_sql
 from app.security.sql_validator import validate_sql
 from app.config import get_settings
+from app.security.google_auth import require_google_user, verify_google_credential
 
 router = APIRouter(prefix="/api", tags=["text-to-sql"])
 
@@ -21,6 +22,24 @@ class QueryRequest(BaseModel):
 
 class SQLRequest(BaseModel):
     sql: str = Field(min_length=1, max_length=20000)
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(min_length=20, max_length=10000)
+
+
+@router.post("/auth/google")
+def google_auth(req: GoogleAuthRequest):
+    claims = verify_google_credential(req.credential)
+
+    return {
+        "user": {
+            "id": claims.get("sub"),
+            "name": claims.get("name", "Google user"),
+            "email": claims.get("email"),
+            "picture": claims.get("picture"),
+        }
+    }
 
 
 class QueryResponse(BaseModel):
@@ -36,7 +55,7 @@ class QueryResponse(BaseModel):
 
 
 @router.post("/query", response_model=QueryResponse)
-def query(req: QueryRequest):
+def query(req: QueryRequest, _user: dict = Depends(require_google_user)):
     started = time.perf_counter()
     thread_id = str(uuid.uuid4())
 
@@ -73,7 +92,7 @@ def query(req: QueryRequest):
 
 
 @router.get("/schema")
-def schema():
+def schema(_user: dict = Depends(require_google_user)):
     s = get_database_schema()
     return {
         "tables": s["tables"],
@@ -83,7 +102,7 @@ def schema():
 
 
 @router.post("/sql/execute")
-def execute_edited_sql(req: SQLRequest):
+def execute_edited_sql(req: SQLRequest, _user: dict = Depends(require_google_user)):
     current_schema = get_database_schema()
     allowed_tables = [table["table"] for table in current_schema["tables"]]
     allowed_columns = [
@@ -116,7 +135,7 @@ def _safe_dataset_name(name: str) -> str:
 
 
 @router.get("/datasets")
-def list_datasets():
+def list_datasets(_user: dict = Depends(require_google_user)):
     datasets = []
     for path in sorted(DATASET_DIR.glob("*.csv")):
         try:
@@ -135,7 +154,7 @@ def list_datasets():
 
 
 @router.post("/datasets/upload")
-async def upload_dataset(file: UploadFile = File(...)):
+async def upload_dataset(file: UploadFile = File(...), _user: dict = Depends(require_google_user)):
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV datasets are supported.")
 
@@ -171,7 +190,7 @@ def _rebuild_dataset_index():
 
 
 @router.post("/datasets/select")
-def select_dataset(payload: dict, background_tasks: BackgroundTasks):
+def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict = Depends(require_google_user)):
     name = payload.get("name", "")
     safe_name = _safe_dataset_name(name)
     target = DATASET_DIR / safe_name
@@ -213,12 +232,12 @@ def select_dataset(payload: dict, background_tasks: BackgroundTasks):
 
 
 @router.get("/datasets/index-status")
-def dataset_index_status():
+def dataset_index_status(_user: dict = Depends(require_google_user)):
     return DATASET_INDEX_STATUS
 
 
 @router.get("/datasets/selected")
-def selected_dataset():
+def selected_dataset(_user: dict = Depends(require_google_user)):
     selection_file = DATASET_DIR / ".selected"
     if not selection_file.exists():
         return {"selected_dataset": None, "table_name": None}
