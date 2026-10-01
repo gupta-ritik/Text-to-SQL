@@ -127,9 +127,20 @@ export default function Home() {
       localStorage.setItem("google-id-token", credential);
       setAuthUser(data.user);
     } catch (err: any) {
-      setAuthError(err.name === "AbortError"
-        ? "The backend is taking too long to respond. Please try signing in again."
-        : err.message || "Google sign-in failed");
+      if (err.name === "AbortError") {
+        setAuthError("The backend is taking too long to respond. Please try signing in again.");
+      } else if (err.message?.toLowerCase().includes("token expired") || err.message?.toLowerCase().includes("401")) {
+        localStorage.removeItem("google-id-token");
+        setPendingCredential("");
+        setCaptchaToken("");
+        setAuthError("Your Google session expired. Please click Continue with Google to sign in again.");
+        const recaptcha = (window as any).grecaptcha;
+        if (recaptchaWidgetId.current !== null && recaptcha?.reset) {
+          recaptcha.reset(recaptchaWidgetId.current);
+        }
+      } else {
+        setAuthError(err.message || "Google sign-in failed");
+      }
     } finally {
       window.clearTimeout(timeout);
       setAuthLoading(false);
