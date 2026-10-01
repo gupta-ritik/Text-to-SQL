@@ -75,6 +75,7 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
+  const [googleReady, setGoogleReady] = useState(false);
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -299,6 +300,7 @@ export default function Home() {
         width: 280,
         text: "continue_with",
       });
+      setGoogleReady(true);
       return true;
     };
 
@@ -350,6 +352,7 @@ export default function Home() {
           <h1>Ask your database<br /><em>in plain English.</em></h1>
           <p className="auth-muted">Sign in securely with Google to access your natural-language data workspace.</p>
           <div className="google-button" ref={googleButtonRef} />
+          {!googleReady && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <p className="auth-muted auth-loading">Loading Google sign-in...</p>}
           {authError && <p className="auth-error">{authError}</p>}
           {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <p className="auth-error">Google sign-in is not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID in Vercel.</p>}
         </div>
