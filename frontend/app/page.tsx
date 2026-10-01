@@ -76,6 +76,7 @@ export default function Home() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const recaptchaWidgetId = useRef<number | null>(null);
+  const captchaTokenRef = useRef("");
   const [recaptchaScriptLoaded, setRecaptchaScriptLoaded] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [pendingCredential, setPendingCredential] = useState("");
@@ -105,6 +106,7 @@ export default function Home() {
   }
 
   async function completeGoogleSignIn(credential: string, token = captchaToken) {
+    token = token || captchaTokenRef.current;
     if (RECAPTCHA_SITE_KEY && !token) {
       setPendingCredential(credential);
       setAuthError("Please complete the reCAPTCHA challenge before signing in.");
@@ -388,14 +390,21 @@ export default function Home() {
       recaptchaWidgetId.current = recaptcha.render(recaptchaRef.current, {
         sitekey: RECAPTCHA_SITE_KEY,
         callback: (token: string) => {
+          captchaTokenRef.current = token;
           setCaptchaToken(token);
           setPendingCredential(credential => {
             if (credential) void completeGoogleSignIn(credential, token);
             return "";
           });
         },
-        "expired-callback": () => setCaptchaToken(""),
-        "error-callback": () => setCaptchaToken(""),
+        "expired-callback": () => {
+          captchaTokenRef.current = "";
+          setCaptchaToken("");
+        },
+        "error-callback": () => {
+          captchaTokenRef.current = "";
+          setCaptchaToken("");
+        },
       });
     };
     renderRecaptcha();
