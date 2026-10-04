@@ -415,7 +415,7 @@ export default function Home() {
       if (!data) throw new Error("The query stream ended before returning a result.");
       setResult(data);
       setSqlDraft(data.sql || "");
-      setPipelineStep(5);
+      setPipelineStep(7);
       showToast("Query completed successfully.", "success");
       setHistory(previous => {
         const next = [
@@ -729,7 +729,7 @@ export default function Home() {
                 <span>{uploading ? "Uploading dataset..." : "Building schema index..."}</span>
                 <strong>{datasetProgress}%</strong>
               </div>
-              <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
+              <div className="progress-track"><div className={`progress-fill ${indexing ? "is-indexing" : ""}`} style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
               <div className="dataset-progress-meta">
                 <small>{uploading ? "Sending your CSV to the secure workspace." : "Preparing the agent to answer questions about this dataset."}</small>
                 <small>Elapsed {formatDuration(datasetElapsed)}{indexing ? " · usually ready within 2 minutes" : ""}</small>
@@ -775,19 +775,19 @@ export default function Home() {
         <div className="pipeline card">
           <div className="pipeline-heading">
             <div className="label">AGENT PIPELINE</div>
-            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 6 ? "is-complete" : ""}`}>
-              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 6 ? "COMPLETE" : "READY"}
+            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 7 ? "is-complete" : ""}`}>
+              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 7 ? "COMPLETE" : "READY"}
             </span>
           </div>
           <div className="steps">
-            {["Question", "Plan", "Schema RAG", "SQL", "Validate", "Verify", "Answer"].map((s, i) => (
+            {["Question", "Plan", "Schema RAG", "SQL", "Validate", "Execute", "Verify", "Answer"].map((s, i) => (
               <div className={`step ${pipelineStep === i ? "is-active" : ""} ${pipelineStep > i ? "is-complete" : ""}`} key={s}>
                 <span>{pipelineStep > i ? "✓" : i + 1}</span>{s}
               </div>
             ))}
           </div>
           <p className="pipeline-status">
-            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Planning the query...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Verifying the result...", "Preparing your answer..."][pipelineStep] : pipelineStep === 6 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
+            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Planning the query...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Executing against your dataset...", "Verifying the result...", "Preparing your answer..."][pipelineStep] : pipelineStep === 7 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
           </p>
         </div>
 

@@ -120,9 +120,9 @@ def query_stream(req: QueryRequest, _user: dict = Depends(require_google_user)):
             "validate_sql": (4, "Validating the query..."),
             "repair_sql": (3, "Correcting the SQL query..."),
             "execute_sql": (5, "Executing against your dataset..."),
-            "verify_result": (5, "Verifying the result..."),
-            "process_result": (5, "Processing query results..."),
-            "generate_answer": (6, "Preparing your answer..."),
+            "verify_result": (6, "Verifying the result..."),
+            "process_result": (6, "Processing query results..."),
+            "generate_answer": (7, "Preparing your answer..."),
         }
         try:
             inputs, config = _query_input(req.question, thread_id)
@@ -132,7 +132,7 @@ def query_stream(req: QueryRequest, _user: dict = Depends(require_google_user)):
                     step, message = node_steps.get(node, (0, "Working on your request..."))
                     yield f"data: {json.dumps({'type': 'progress', 'step': step, 'message': message})}\n\n"
             response = _query_response(req.question, state, started)
-            yield f"data: {json.dumps({'type': 'result', 'result': response.model_dump()})}\n\n"
+            yield f"data: {json.dumps({'type': 'result', 'result': response.model_dump()}, default=str)}\n\n"
         except Exception as exc:
             yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
 
