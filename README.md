@@ -436,6 +436,16 @@ Column names become SQL columns, so use simple, unique names when possible.
 Selecting a dataset replaces the generated table for that file name; it does
 not delete the demo tables or other generated tables.
 
+Dataset intelligence is generated during upload and activation. The API
+reports row counts, inferred column types, missing-value counts, unique-value
+counts, duplicate rows, numeric ranges, date-like columns, categorical-column
+signals, and a data-quality score. Excel workbooks are read sheet by sheet;
+each sheet becomes a separate `dataset_*` table. When multiple datasets are
+activated, the backend compares column names, data types, uniqueness, and
+value overlap to infer likely relationships. These relationships are persisted
+and included in the Schema RAG index so the agent can ground cross-dataset
+joins.
+
 The included dataset contains 369 rows and these columns:
 
 ```text

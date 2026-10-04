@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from sqlalchemy import inspect
 from app.database.connection import get_engine
 
@@ -42,7 +45,24 @@ def get_database_schema() -> dict:
             "columns": columns,
         })
 
-    return {"tables": tables, "relationships": relationships}
+    relationship_file = Path(__file__).resolve().parents[3] / "datasets" / ".relationships.json"
+    if relationship_file.exists():
+        try:
+            inferred = json.loads(relationship_file.read_text(encoding="utf-8"))
+            relationships.extend(inferred)
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    unique_relationships = {
+        (
+            relationship.get("from_table"),
+            relationship.get("from_column"),
+            relationship.get("to_table"),
+            relationship.get("to_column"),
+        ): relationship
+        for relationship in relationships
+    }
+    return {"tables": tables, "relationships": list(unique_relationships.values())}
 
 
 def schema_as_text(schema: dict) -> str:

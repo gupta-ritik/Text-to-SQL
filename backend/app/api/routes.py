@@ -7,10 +7,17 @@ from pydantic import BaseModel, Field
 from pathlib import Path
 import re
 import shutil
+import json
 
 from app.agent.graph import agent_graph
 from app.database.schema import get_database_schema, schema_as_text
 from app.database.executor import execute_sql
+from app.database.dataset_intelligence import (
+    SUPPORTED_DATASET_EXTENSIONS,
+    infer_relationships,
+    inspect_dataset,
+    read_dataset_frames,
+)
 from app.security.sql_validator import validate_sql
 from app.config import get_settings
 from app.security.google_auth import require_google_user, verify_google_credential, verify_recaptcha
@@ -172,12 +179,6 @@ def execute_edited_sql(req: SQLRequest, _user: dict = Depends(require_google_use
 DATASET_DIR = Path(__file__).resolve().parents[3] / "datasets"
 DATASET_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_INDEX_STATUS = {"status": "ready", "error": None}
-SUPPORTED_DATASET_EXTENSIONS = {
-    ".csv", ".tsv", ".xlsx", ".xls", ".json", ".jsonl", ".ndjson",
-    ".parquet", ".xml", ".yaml", ".yml",
-}
-
-
 def _safe_dataset_name(name: str) -> str:
     name = Path(name).name
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
@@ -193,42 +194,9 @@ def _dataset_table_name(name: str) -> str:
     return table_name or "dataset_selected"
 
 
-def _read_dataset(path: Path):
-    import pandas as pd
-
-    extension = path.suffix.lower()
-    if extension == ".csv":
-        return pd.read_csv(path)
-    if extension == ".tsv":
-        return pd.read_csv(path, sep="\t")
-    if extension in {".xlsx", ".xls"}:
-        return pd.read_excel(path)
-    if extension == ".json":
-        return pd.read_json(path)
-    if extension in {".jsonl", ".ndjson"}:
-        return pd.read_json(path, lines=True)
-    if extension == ".parquet":
-        return pd.read_parquet(path)
-    if extension == ".xml":
-        return pd.read_xml(path)
-    if extension in {".yaml", ".yml"}:
-        import yaml
-        with path.open("r", encoding="utf-8") as source:
-            value = yaml.safe_load(source)
-        if isinstance(value, dict):
-            value = value.get("data", value)
-        return pd.DataFrame(value if isinstance(value, list) else [value])
-    raise ValueError(f"Unsupported dataset format: {extension}")
-
-
 def _dataset_summary(path: Path) -> dict:
-    frame = _read_dataset(path)
-    return {
-        "name": path.name,
-        "format": path.suffix.lower().lstrip("."),
-        "rows": len(frame.index),
-        "columns": frame.columns.tolist(),
-    }
+    intelligence = inspect_dataset(path)
+    return {"name": path.name, **intelligence}
 
 
 @router.get("/datasets")
@@ -306,18 +274,21 @@ def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict
 
         engine = create_engine(get_settings().database_url, future=True)
         selected = []
+        relationship_tables = []
         for safe_name, target in zip(safe_names, targets):
-            df = _read_dataset(target)
-            if df.empty:
-                raise ValueError(f"The selected dataset is empty: {safe_name}")
-            table_name = _dataset_table_name(safe_name)
-            df.to_sql(table_name, engine, if_exists="replace", index=False)
-            selected.append({
-                "name": safe_name,
-                "table_name": table_name,
-                "rows": len(df),
-                "columns": df.columns.tolist(),
-            })
+            for logical_name, df in read_dataset_frames(target):
+                if df.empty:
+                    raise ValueError(f"The selected dataset is empty: {safe_name}")
+                table_name = _dataset_table_name(logical_name)
+                df.to_sql(table_name, engine, if_exists="replace", index=False)
+                relationship_tables.append({"table_name": table_name, "frame": df})
+                selected.append({
+                    "name": safe_name,
+                    "sheet": logical_name if logical_name != target.stem else None,
+                    "table_name": table_name,
+                    "rows": len(df),
+                    "columns": df.columns.tolist(),
+                })
 
         (DATASET_DIR / ".selected").write_text(
             "\n".join(f"{item['name']}\t{item['table_name']}" for item in selected),
@@ -325,6 +296,10 @@ def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict
         )
 
         DATASET_INDEX_STATUS.update({"status": "indexing", "error": None})
+        (DATASET_DIR / ".relationships.json").write_text(
+            json.dumps(infer_relationships(relationship_tables), default=str),
+            encoding="utf-8",
+        )
         background_tasks.add_task(_rebuild_dataset_index)
 
         return {
