@@ -86,6 +86,8 @@ th { color: var(--muted); background: #0b0f13; position: sticky; top: 0; }
 }
 
 .dataset-card { margin-bottom: 18px; }
+.dataset-help { display: flex; gap: 8px; align-items: baseline; margin: 14px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dataset-help strong { color: var(--text); font-size: 12px; }
 .dataset-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .dataset-controls select {
   flex: 1; min-width: 240px; border: 1px solid var(--line); background: #090c10;
@@ -99,6 +101,7 @@ th { color: var(--muted); background: #0b0f13; position: sticky; top: 0; }
 }
 .upload-btn:hover, .refresh-btn:hover { border-color: #3e4a58; }
 .dataset-meta { display: flex; align-items: center; gap: 5px; color: var(--muted); margin-top: 12px; font-size: 12px; }
+.dataset-empty { display: flex; align-items: center; gap: 8px; margin-top: 15px; padding: 11px 12px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: 12px; }
 .toast { position: fixed; z-index: 20; top: 22px; right: 22px; display: flex; align-items: center; gap: 10px; max-width: min(390px, calc(100vw - 30px)); padding: 12px 12px 12px 10px; border: 1px solid rgba(151,161,173,.25); border-radius: 12px; color: var(--text); background: rgba(21,27,33,.96); box-shadow: 0 18px 55px rgba(0,0,0,.35); font-size: 12px; animation: toast-in .24s ease-out; }
 .toast-success { border-color: rgba(155,230,200,.5); }
 .toast-error { border-color: rgba(255,128,124,.55); }

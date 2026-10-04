@@ -701,8 +701,13 @@ export default function Home() {
             </div>
             <span className="eyebrow">SOURCE 01</span>
           </div>
+          <div className="dataset-help">
+            <strong>Choose one or more sources</strong>
+            <span>Select several datasets together to let the agent compare or join them. New files are indexed automatically.</span>
+          </div>
           <div className="dataset-controls">
             <select
+              aria-label="Select datasets to use"
               multiple
               disabled={uploading || indexing}
               value={selectedDatasetNames}
@@ -712,9 +717,9 @@ export default function Home() {
                 setSelectedDataset(names[0] || "");
               }}
             >
-              {datasets.map(d => (
-                <option key={d.name} value={d.name}>{d.name}</option>
-              ))}
+              {datasets.length ? datasets.map(d => (
+                <option key={d.name} value={d.name}>{d.name}{d.format ? ` · ${d.format}` : ""}</option>
+              )) : <option disabled>No datasets uploaded yet</option>}
             </select>
 
             <button
@@ -723,7 +728,7 @@ export default function Home() {
               disabled={uploading || indexing || !selectedDatasetNames.length}
               onClick={() => selectDataset(selectedDatasetNames)}
             >
-              <Play size={15} /> Use selected
+              <Play size={15} /> Use selected{selectedDatasetNames.length ? ` (${selectedDatasetNames.length})` : ""}
             </button>
 
             <label className="upload-btn">
@@ -765,6 +770,12 @@ export default function Home() {
           {selectedDataset && (
             <div className="dataset-meta">
               <FileText size={13} /> Active datasets: <strong>{selectedDatasetNames.join(", ") || selectedDataset}</strong>{indexing ? " (indexing...)" : datasetReadyTime !== null ? ` (ready in ${formatDuration(datasetReadyTime)})` : ""}
+            </div>
+          )}
+          {!datasets.length && !uploading && !indexing && (
+            <div className="dataset-empty">
+              <FileText size={16} />
+              <span>No datasets yet. Upload a file to create your first queryable source.</span>
             </div>
           )}
         </div>

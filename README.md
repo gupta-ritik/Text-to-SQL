@@ -38,6 +38,12 @@ SQLAlchemy → PostgreSQL
 - A Groq or OpenRouter API key
 - Optional LangSmith API key
 
+## User guide
+
+For the step-by-step application workflow, see [USER_GUIDE.md](USER_GUIDE.md).
+It covers Google sign-in, multi-format uploads, selecting multiple datasets,
+querying, reviewing SQL, exporting results, and troubleshooting.
+
 ## 2. How the application works
 
 Each question follows a controlled pipeline:
