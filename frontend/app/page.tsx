@@ -3,7 +3,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb } from "lucide-react";
+import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -169,6 +169,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
   const [pipelineStep, setPipelineStep] = useState(-1);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     if (!uploading && !indexing) return;
@@ -187,6 +188,15 @@ export default function Home() {
     }, 700);
     return () => window.clearInterval(timer);
   }, [uploading, datasetPhase]);
+
+  useEffect(() => {
+    if (!guideOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setGuideOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [guideOpen]);
 
   function formatDuration(seconds: number) {
     if (seconds < 60) return `${seconds.toFixed(1)}s`;
@@ -685,6 +695,9 @@ export default function Home() {
           </div>
           <div className="account-area">
             <div className="system-status"><span className="status-dot" /> System ready</div>
+            <button className="guide-button" type="button" onClick={() => setGuideOpen(true)} title="Open user guide">
+              <BookOpen size={15} /> Guide
+            </button>
             <button className="account-button" type="button" onClick={signOut} title="Sign out">
               {authUser.picture ? <img src={authUser.picture} alt="" /> : <span>{authUser.name.charAt(0)}</span>}
               <b>{authUser.name}</b>
@@ -916,6 +929,30 @@ export default function Home() {
 
         <button className="reset" onClick={reset}>Reset workspace</button>
       </section>
+
+      {guideOpen && (
+        <div className="guide-backdrop" role="presentation" onMouseDown={() => setGuideOpen(false)}>
+          <section className="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title" onMouseDown={event => event.stopPropagation()}>
+            <div className="guide-modal-header">
+              <div>
+                <div className="label"><BookOpen size={16} /> QUICK USER GUIDE</div>
+                <h2 id="guide-title">Work with your data</h2>
+                <p>Upload your sources, ask a question, and review the answer with confidence.</p>
+              </div>
+              <button className="guide-close" type="button" onClick={() => setGuideOpen(false)} aria-label="Close user guide" title="Close user guide"><X size={18} /></button>
+            </div>
+            <div className="guide-grid">
+              <article><span className="guide-number">01</span><h3>Upload sources</h3><p>Choose <strong>Upload datasets</strong> to add CSV, TSV, Excel, JSON, JSONL, Parquet, XML, or YAML files. Several files can be uploaded together.</p></article>
+              <article><span className="guide-number">02</span><h3>Select what to use</h3><p>Select one or more sources, then choose <strong>Use selected</strong>. Excel sheets become separate tables, ready for comparison and joins.</p></article>
+              <article><span className="guide-number">03</span><h3>Wait until ready</h3><p>The progress panel shows transfer, file processing, and schema indexing. Ask questions after the status reaches <strong>ready</strong>.</p></article>
+              <article><span className="guide-number">04</span><h3>Ask naturally</h3><p>Include the metric, time range, grouping, sort order, and limit when you need a precise answer.</p></article>
+              <article><span className="guide-number">05</span><h3>Review the result</h3><p>Check the answer, tables used, generated SQL, returned rows, and automatic analytics. Use <strong>Copy</strong> or <strong>Export CSV</strong> when useful.</p></article>
+              <article><span className="guide-number">06</span><h3>Need more detail?</h3><p>Use the full <strong>USER_GUIDE.md</strong> in the project for setup, troubleshooting, data quality, and best practices.</p></article>
+            </div>
+            <div className="guide-tip"><Lightbulb size={16} /><span>Tip: use stable shared IDs such as <strong>customer_id</strong> or <strong>order_id</strong> to help the agent discover relationships between datasets.</span></div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
