@@ -172,6 +172,10 @@ def execute_edited_sql(req: SQLRequest, _user: dict = Depends(require_google_use
 DATASET_DIR = Path(__file__).resolve().parents[3] / "datasets"
 DATASET_DIR.mkdir(parents=True, exist_ok=True)
 DATASET_INDEX_STATUS = {"status": "ready", "error": None}
+SUPPORTED_DATASET_EXTENSIONS = {
+    ".csv", ".tsv", ".xlsx", ".xls", ".json", ".jsonl", ".ndjson",
+    ".parquet", ".xml", ".yaml", ".yml",
+}
 
 
 def _safe_dataset_name(name: str) -> str:
@@ -182,49 +186,100 @@ def _safe_dataset_name(name: str) -> str:
     return name
 
 
+def _dataset_table_name(name: str) -> str:
+    table_name = "dataset_" + re.sub(
+        r"[^A-Za-z0-9_]+", "_", Path(name).stem
+    ).lower().strip("_")
+    return table_name or "dataset_selected"
+
+
+def _read_dataset(path: Path):
+    import pandas as pd
+
+    extension = path.suffix.lower()
+    if extension == ".csv":
+        return pd.read_csv(path)
+    if extension == ".tsv":
+        return pd.read_csv(path, sep="\t")
+    if extension in {".xlsx", ".xls"}:
+        return pd.read_excel(path)
+    if extension == ".json":
+        return pd.read_json(path)
+    if extension in {".jsonl", ".ndjson"}:
+        return pd.read_json(path, lines=True)
+    if extension == ".parquet":
+        return pd.read_parquet(path)
+    if extension == ".xml":
+        return pd.read_xml(path)
+    if extension in {".yaml", ".yml"}:
+        import yaml
+        with path.open("r", encoding="utf-8") as source:
+            value = yaml.safe_load(source)
+        if isinstance(value, dict):
+            value = value.get("data", value)
+        return pd.DataFrame(value if isinstance(value, list) else [value])
+    raise ValueError(f"Unsupported dataset format: {extension}")
+
+
+def _dataset_summary(path: Path) -> dict:
+    frame = _read_dataset(path)
+    return {
+        "name": path.name,
+        "format": path.suffix.lower().lstrip("."),
+        "rows": len(frame.index),
+        "columns": frame.columns.tolist(),
+    }
+
+
 @router.get("/datasets")
 def list_datasets(_user: dict = Depends(require_google_user)):
     datasets = []
-    for path in sorted(DATASET_DIR.glob("*.csv")):
+    for path in sorted(DATASET_DIR.iterdir()):
+        if path.suffix.lower() not in SUPPORTED_DATASET_EXTENSIONS:
+            continue
         try:
-            import pandas as pd
-            sample = pd.read_csv(path, nrows=5)
-            with path.open("r", encoding="utf-8", errors="ignore") as f:
-                rows = max(sum(1 for _ in f) - 1, 0)
-            datasets.append({
-                "name": path.name,
-                "rows": rows,
-                "columns": sample.columns.tolist(),
-            })
+            datasets.append(_dataset_summary(path))
         except Exception as exc:
             datasets.append({"name": path.name, "error": str(exc)})
     return {"datasets": datasets}
 
 
 @router.post("/datasets/upload")
-async def upload_dataset(file: UploadFile = File(...), _user: dict = Depends(require_google_user)):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV datasets are supported.")
+async def upload_dataset(
+    files: list[UploadFile] | None = File(default=None),
+    file: UploadFile | None = File(default=None),
+    _user: dict = Depends(require_google_user),
+):
+    uploads = list(files or [])
+    if file is not None:
+        uploads.append(file)
+    if not uploads:
+        raise HTTPException(status_code=400, detail="Upload at least one dataset file.")
 
-    safe_name = _safe_dataset_name(file.filename)
-    target = DATASET_DIR / safe_name
-    with target.open("wb") as output:
-        shutil.copyfileobj(file.file, output)
-
+    uploaded = []
+    created_paths = []
     try:
-        import pandas as pd
-        sample = pd.read_csv(target, nrows=5)
+        for upload in uploads:
+            original_name = upload.filename or ""
+            extension = Path(original_name).suffix.lower()
+            if extension not in SUPPORTED_DATASET_EXTENSIONS:
+                supported = ", ".join(sorted(SUPPORTED_DATASET_EXTENSIONS))
+                raise ValueError(f"Unsupported format {extension or '(none)'}. Supported: {supported}")
+            safe_name = _safe_dataset_name(original_name)
+            target = DATASET_DIR / safe_name
+            with target.open("wb") as output:
+                shutil.copyfileobj(upload.file, output)
+            created_paths.append(target)
+            uploaded.append(_dataset_summary(target))
     except Exception as exc:
-        target.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail=f"Invalid CSV: {exc}")
+        for path in created_paths:
+            path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"Invalid dataset: {exc}")
 
     return {
-        "message": "Dataset uploaded successfully.",
-        "dataset": {
-            "name": safe_name,
-            "rows": None,
-            "columns": sample.columns.tolist(),
-        },
+        "message": f"Uploaded {len(uploaded)} dataset(s) successfully.",
+        "datasets": uploaded,
+        "dataset": uploaded[0],
     }
 
 
@@ -239,40 +294,43 @@ def _rebuild_dataset_index():
 
 @router.post("/datasets/select")
 def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict = Depends(require_google_user)):
-    name = payload.get("name", "")
-    safe_name = _safe_dataset_name(name)
-    target = DATASET_DIR / safe_name
-    if not target.exists():
-        raise HTTPException(status_code=404, detail="Dataset not found.")
+    names = payload.get("names") or ([payload.get("name")] if payload.get("name") else [])
+    safe_names = [_safe_dataset_name(name) for name in names if name]
+    targets = [DATASET_DIR / name for name in safe_names]
+    if not targets or any(not target.exists() for target in targets):
+        raise HTTPException(status_code=404, detail="One or more datasets were not found.")
 
     try:
         import pandas as pd
         from sqlalchemy import create_engine
 
-        df = pd.read_csv(target)
-        if df.empty:
-            raise ValueError("The selected CSV is empty.")
-
-        table_name = "dataset_" + re.sub(
-            r"[^A-Za-z0-9_]+", "_", Path(safe_name).stem
-        ).lower().strip("_")
-        table_name = table_name or "dataset_selected"
-
         engine = create_engine(get_settings().database_url, future=True)
-        df.to_sql(table_name, engine, if_exists="replace", index=False)
+        selected = []
+        for safe_name, target in zip(safe_names, targets):
+            df = _read_dataset(target)
+            if df.empty:
+                raise ValueError(f"The selected dataset is empty: {safe_name}")
+            table_name = _dataset_table_name(safe_name)
+            df.to_sql(table_name, engine, if_exists="replace", index=False)
+            selected.append({
+                "name": safe_name,
+                "table_name": table_name,
+                "rows": len(df),
+                "columns": df.columns.tolist(),
+            })
 
         (DATASET_DIR / ".selected").write_text(
-            f"{safe_name}\n{table_name}", encoding="utf-8"
+            "\n".join(f"{item['name']}\t{item['table_name']}" for item in selected),
+            encoding="utf-8",
         )
 
         DATASET_INDEX_STATUS.update({"status": "indexing", "error": None})
         background_tasks.add_task(_rebuild_dataset_index)
 
         return {
-            "selected_dataset": safe_name,
-            "table_name": table_name,
-            "rows": len(df),
-            "columns": df.columns.tolist(),
+            "selected_dataset": selected[0]["name"],
+            "table_name": selected[0]["table_name"],
+            "selected_datasets": selected,
             "index_status": "indexing",
         }
     except Exception as exc:
@@ -291,13 +349,19 @@ def selected_dataset(_user: dict = Depends(require_google_user)):
         return {"selected_dataset": None, "table_name": None}
 
     lines = [
-        x.strip()
+        x.strip().split("\t", 1)
         for x in selection_file.read_text(encoding="utf-8").splitlines()
         if x.strip()
     ]
+    if len(lines) == 2 and len(lines[0]) == 1 and len(lines[1]) == 1:
+        lines = [[lines[0][0], lines[1][0]]]
     return {
-        "selected_dataset": lines[0] if lines else None,
-        "table_name": lines[1] if len(lines) > 1 else None,
+        "selected_dataset": lines[0][0] if lines else None,
+        "table_name": lines[0][1] if lines and len(lines[0]) > 1 else None,
+        "selected_datasets": [
+            {"name": line[0], "table_name": line[1] if len(line) > 1 else None}
+            for line in lines
+        ],
     }
 
 

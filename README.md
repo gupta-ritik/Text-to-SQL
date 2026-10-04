@@ -65,7 +65,7 @@ result event, which the frontend uses to display pipeline progress.
 
 - Natural-language questions translated into read-only SQL
 - Schema retrieval with Chroma and LangGraph orchestration
-- CSV upload and dataset selection
+- Multi-format, multi-dataset upload and selection
 - Editable SQL preview with copy and execute actions
 - Deterministic SQL validation before every execution
 - Automatic result tables and numeric bar visualizations
@@ -399,35 +399,42 @@ The final question is intentionally unsupported if the schema does not contain a
 
 ## 10. Upload or select your own CSV dataset
 
-The frontend provides a **Dataset** panel. You can upload a new CSV or select
-a previously uploaded CSV. The authenticated API stores uploaded files in the
-repository-level `datasets/` directory and derives a safe filename from the
-original upload name.
+The frontend provides a **Dataset** panel. You can upload several datasets at
+once, even when they use different formats, or select several previously
+uploaded datasets together. Supported formats are:
+
+```text
+.csv, .tsv, .xlsx, .xls, .json, .jsonl, .ndjson, .parquet, .xml, .yaml, .yml
+```
+
+The authenticated API stores uploaded files in the repository-level `datasets/`
+directory and derives a safe filename from the original upload name. Excel
+files use `openpyxl`/`xlrd`, Parquet uses `pyarrow`, and YAML uses `PyYAML`.
 
 To upload a dataset locally:
 
 1. Open <http://localhost:3000> after the backend is ready.
-2. Click **Upload CSV** and choose a `.csv` file.
+2. Click **Upload datasets** and choose one or more supported files.
 3. Wait for the upload and **Indexing...** status to finish.
-4. Ask questions about the active dataset.
+4. Ask questions about the active datasets. Separate uploaded files become
+   separate SQL tables, so questions can join them when relationships are
+   available or can be inferred safely.
 
-Only CSV files are accepted. If the page shows `Failed to fetch`, check that
+Files must be readable by Pandas. If the page shows `Failed to fetch`, check that
 the backend is running at <http://localhost:8000/health>, wait for startup
 indexing to finish, and refresh the frontend.
 
 Selecting a dataset automatically:
-1. Reads the CSV with Pandas.
-2. Loads it into the SQL database as a `dataset_*` table.
-3. Records the selected file and generated `dataset_*` table.
+1. Reads each file with the format-appropriate Pandas reader.
+2. Loads each file into the SQL database as its own `dataset_*` table.
+3. Records all selected files and generated table names.
 4. Rebuilds the Schema RAG index in a background task.
-5. Makes the dataset available after `/api/datasets/index-status` reports
+5. Makes the datasets available after `/api/datasets/index-status` reports
    `{"status":"ready"}`.
 
-The upload endpoint only accepts files whose names end in `.csv`. The CSV must
-be readable by Pandas and should have a header row. Column names become SQL
-columns, so use simple, unique names when possible. Selecting a new dataset
-replaces the generated table for that file name; it does not delete the demo
-tables.
+Column names become SQL columns, so use simple, unique names when possible.
+Selecting a dataset replaces the generated table for that file name; it does
+not delete the demo tables or other generated tables.
 
 The included dataset contains 369 rows and these columns:
 
@@ -499,8 +506,8 @@ shape:
 | `POST` | `/api/sql/execute` | Validate and execute edited read-only SQL |
 | `GET` | `/api/schema` | Read the current database schema |
 | `GET` | `/api/datasets` | List available CSV datasets |
-| `POST` | `/api/datasets/upload` | Upload a CSV dataset |
-| `POST` | `/api/datasets/select` | Activate a dataset |
+| `POST` | `/api/datasets/upload` | Upload one or more supported dataset files |
+| `POST` | `/api/datasets/select` | Activate one or more datasets |
 | `GET` | `/api/datasets/index-status` | Check schema indexing status |
 | `GET` | `/api/datasets/selected` | Read the active dataset and generated table |
 | `POST` | `/api/auth/google` | Verify a Google credential |
@@ -518,6 +525,23 @@ To execute edited SQL, send a JSON body such as:
 
 The response includes the original SQL, the result object, and the validator
 message. Invalid SQL returns HTTP 400.
+
+For multiple uploads, send multipart form data using repeated `files` fields:
+
+```text
+files=customers.csv
+files=orders.parquet
+files=products.xlsx
+```
+
+To activate multiple uploaded datasets, send their names in one request:
+
+```json
+{"names":["customers.csv","orders.parquet","products.xlsx"]}
+```
+
+The response includes `selected_datasets`, with the generated SQL table name,
+row count, and columns for every activated file.
 
 ### Adaptive planning and self-correction
 

@@ -158,6 +158,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [datasets, setDatasets] = useState<any[]>([]);
   const [selectedDataset, setSelectedDataset] = useState("");
+  const [selectedDatasetNames, setSelectedDatasetNames] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [datasetProgress, setDatasetProgress] = useState(0);
@@ -255,11 +256,16 @@ export default function Home() {
       const selected = await fetch(`${API}/api/datasets/selected`, { headers: authHeaders() });
       const selectedData = await selected.json();
       setSelectedDataset(selectedData.selected_dataset || "");
+      setSelectedDatasetNames(
+        selectedData.selected_datasets?.map((item: { name: string }) => item.name)
+          || (selectedData.selected_dataset ? [selectedData.selected_dataset] : [])
+      );
     } catch {}
   }
 
-  async function selectDataset(name: string, preserveTiming = false) {
-    if (!name) return;
+  async function selectDataset(names: string | string[], preserveTiming = false) {
+    const selectedNames = Array.isArray(names) ? names : [names];
+    if (!selectedNames.length) return;
     if (!preserveTiming) {
       datasetStartedAt.current = Date.now();
       setDatasetElapsed(0);
@@ -268,12 +274,13 @@ export default function Home() {
       setDatasetProgress(45);
     }
     setError("");
-    setSelectedDataset(name);
+    setSelectedDataset(selectedNames[0]);
+    setSelectedDatasetNames(selectedNames);
     try {
       const res = await fetch(`${API}/api/datasets/select`, {
         method: "POST",
         headers: authHeaders(true),
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ names: selectedNames })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not select dataset");
@@ -325,7 +332,7 @@ export default function Home() {
     setError("Dataset indexing is taking longer than expected.");
   }
 
-  async function uploadDataset(file: File) {
+  async function uploadDataset(files: File[]) {
     datasetStartedAt.current = Date.now();
     setDatasetElapsed(0);
     setDatasetReadyTime(null);
@@ -335,7 +342,7 @@ export default function Home() {
     setError("");
     try {
       const form = new FormData();
-      form.append("file", file);
+      files.forEach(file => form.append("files", file));
       const data = await new Promise<any>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open("POST", `${API}/api/datasets/upload`);
@@ -362,9 +369,9 @@ export default function Home() {
       setUploading(false);
       setDatasetPhase("indexing");
       setDatasetProgress(50);
-      showToast("CSV uploaded. Preparing schema index...", "info");
+      showToast(`${files.length} dataset${files.length === 1 ? "" : "s"} uploaded. Preparing schema index...`, "info");
       await loadDatasets();
-      await selectDataset(data.dataset.name, true);
+      await selectDataset(data.datasets.map((item: { name: string }) => item.name), true);
     } catch (err: any) {
       setUploading(false);
       setDatasetProgress(0);
@@ -695,24 +702,42 @@ export default function Home() {
             <span className="eyebrow">SOURCE 01</span>
           </div>
           <div className="dataset-controls">
-            <select disabled={uploading || indexing} value={selectedDataset} onChange={e => selectDataset(e.target.value)}>
-              <option value="">Select a dataset...</option>
+            <select
+              multiple
+              disabled={uploading || indexing}
+              value={selectedDatasetNames}
+              onChange={e => {
+                const names = Array.from(e.target.selectedOptions, option => option.value);
+                setSelectedDatasetNames(names);
+                setSelectedDataset(names[0] || "");
+              }}
+            >
               {datasets.map(d => (
                 <option key={d.name} value={d.name}>{d.name}</option>
               ))}
             </select>
 
+            <button
+              className="refresh-btn"
+              type="button"
+              disabled={uploading || indexing || !selectedDatasetNames.length}
+              onClick={() => selectDataset(selectedDatasetNames)}
+            >
+              <Play size={15} /> Use selected
+            </button>
+
             <label className="upload-btn">
               <Upload size={15} />
-              {uploading ? "Uploading..." : indexing ? "Indexing..." : "Upload CSV"}
+              {uploading ? "Uploading..." : indexing ? "Indexing..." : "Upload datasets"}
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.tsv,.xlsx,.xls,.json,.jsonl,.ndjson,.parquet,.xml,.yaml,.yml"
+                multiple
                 hidden
                 disabled={uploading || indexing}
                 onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadDataset(file);
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) uploadDataset(files);
                   e.currentTarget.value = "";
                 }}
               />
@@ -739,7 +764,7 @@ export default function Home() {
 
           {selectedDataset && (
             <div className="dataset-meta">
-              <FileText size={13} /> Active dataset: <strong>{selectedDataset}</strong>{indexing ? " (indexing...)" : datasetReadyTime !== null ? ` (ready in ${formatDuration(datasetReadyTime)})` : ""}
+              <FileText size={13} /> Active datasets: <strong>{selectedDatasetNames.join(", ") || selectedDataset}</strong>{indexing ? " (indexing...)" : datasetReadyTime !== null ? ` (ready in ${formatDuration(datasetReadyTime)})` : ""}
             </div>
           )}
         </div>
