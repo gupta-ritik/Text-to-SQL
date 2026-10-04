@@ -162,7 +162,7 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [datasetProgress, setDatasetProgress] = useState(0);
-  const [datasetPhase, setDatasetPhase] = useState<"uploading" | "indexing" | "ready">("uploading");
+  const [datasetPhase, setDatasetPhase] = useState<"uploading" | "processing" | "indexing" | "ready">("uploading");
   const [datasetElapsed, setDatasetElapsed] = useState(0);
   const [datasetReadyTime, setDatasetReadyTime] = useState<number | null>(null);
   const datasetStartedAt = useRef<number | null>(null);
@@ -179,6 +179,14 @@ export default function Home() {
     }, 250);
     return () => window.clearInterval(timer);
   }, [uploading, indexing]);
+
+  useEffect(() => {
+    if (!uploading || datasetPhase !== "processing") return;
+    const timer = window.setInterval(() => {
+      setDatasetProgress(previous => Math.min(68, Math.max(previous + 1, 46)));
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [uploading, datasetPhase]);
 
   function formatDuration(seconds: number) {
     if (seconds < 60) return `${seconds.toFixed(1)}s`;
@@ -353,6 +361,10 @@ export default function Home() {
         if (authorization) request.setRequestHeader("Authorization", authorization);
         request.upload.onprogress = event => {
           if (event.lengthComputable) setDatasetProgress(Math.round((event.loaded / event.total) * 45));
+        };
+        request.upload.onload = () => {
+          setDatasetPhase("processing");
+          setDatasetProgress(previous => Math.max(previous, 46));
         };
         request.onload = () => {
           try {
@@ -756,12 +768,12 @@ export default function Home() {
           {(uploading || indexing) && (
             <div className="dataset-progress" role="status" aria-live="polite">
               <div className="progress-heading">
-                <span>{uploading ? "Uploading dataset..." : "Building schema index..."}</span>
+                <span>{uploading ? (datasetPhase === "processing" ? "Processing files..." : "Uploading dataset...") : "Building schema index..."}</span>
                 <strong>{datasetProgress}%</strong>
               </div>
-              <div className="progress-track"><div className={`progress-fill ${indexing ? "is-indexing" : ""}`} style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
+              <div className="progress-track"><div className={`progress-fill ${indexing || datasetPhase === "processing" ? "is-indexing" : ""}`} style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
               <div className="dataset-progress-meta">
-                <small>{uploading ? "Sending your CSV to the secure workspace." : "Preparing the agent to answer questions about this dataset."}</small>
+                <small>{uploading ? (datasetPhase === "processing" ? "Reading files, profiling data, and preparing tables." : "Sending your files to the secure workspace.") : "Preparing the agent to answer questions about this dataset."}</small>
                 <small>Elapsed {formatDuration(datasetElapsed)}{indexing ? " · usually ready within 2 minutes" : ""}</small>
               </div>
             </div>
