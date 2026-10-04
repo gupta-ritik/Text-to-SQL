@@ -13,14 +13,17 @@ FastAPI /api/query
    ▼
 LangGraph
  ├─ analyze_question
+ ├─ query_planner
  ├─ retrieve_schema (RAG / Chroma)
+ ├─ validate_plan (schema-aware)
  ├─ generate_sql (Groq or OpenRouter)
  ├─ validate_sql (deterministic)
  ├─ repair_sql ─────┐
  ├─ execute_sql     │
+ ├─ verify_result   │
  ├─ process_result  │
  └─ generate_answer │
-                    └─ configurable SQL repair attempts (1 by default)
+                    └─ bounded SQL/plan correction attempts (1 by default)
 
 LangSmith → tracing/observability
 DeepEval  → offline RAG + answer evaluation
@@ -69,6 +72,10 @@ result event, which the frontend uses to display pipeline progress.
 - Local query history with load, remove, clear, and rerun support
 - CSV export for query results
 - Optional DeepEval/OpenAI-compatible judge configuration for evaluation
+- Structured query planning before SQL generation
+- Schema-aware plan validation for missing tables and columns
+- Execution-result verification for semantically incorrect but executable SQL
+- Bounded self-correction with plan repair or SQL repair feedback
 
 ## 4. Authentication setup
 
@@ -161,6 +168,7 @@ development and from the container environment in Docker or Render.
 | `RECAPTCHA_SECRET_KEY` | empty | Optional server-side reCAPTCHA verification |
 | `CORS_ORIGINS` | local and project origins | Comma-separated browser origins |
 | `MAX_SQL_RETRIES` | `1` | Number of SQL repair attempts |
+| `MAX_CORRECTION_ATTEMPTS` | `1` | Maximum bounded plan/semantic correction attempts |
 | `MAX_RESULT_ROWS` | `100` | Maximum rows returned to the API |
 | `EMBEDDING_PROVIDER` | `huggingface` | Use `hash` for lightweight startup |
 | `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model |
@@ -510,6 +518,23 @@ To execute edited SQL, send a JSON body such as:
 
 The response includes the original SQL, the result object, and the validator
 message. Invalid SQL returns HTTP 400.
+
+### Adaptive planning and self-correction
+
+The agent first asks the LLM for a structured plan containing the intent,
+entity, metric, aggregation, filters, time range, grouping, ordering, limit,
+required tables, required columns, and join requirements. The retrieved Chroma
+schema is then checked against that plan before SQL generation. A request such
+as "What is the employee salary?" is rejected when no salary column is
+available instead of allowing the SQL generator to invent one.
+
+After execution, a separate verifier compares the question, plan, SQL, and
+result. This catches queries that run successfully but use the wrong
+aggregation, filter, grouping, join, ordering, or limit. When verification
+fails, the agent supplies the diagnosis to SQL repair and retries only within
+`MAX_CORRECTION_ATTEMPTS`. If the budget is exhausted, the API returns the
+diagnostic rather than presenting the unverified result as a confirmed answer.
+The plan and verifier payloads are available in the response `metadata`.
 
 ## 12. Evaluation
 

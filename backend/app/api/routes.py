@@ -81,7 +81,12 @@ def _query_response(question: str, result: dict, started: float) -> QueryRespons
             round(time.perf_counter() - started, 4),
         ),
         retry_count=result.get("retry_count", 0),
-        error=result.get("sql_error") or None,
+        error=(
+            result.get("sql_error")
+            or result.get("verification_error")
+            or result.get("plan_error")
+            or None
+        ),
         metadata=result.get("metadata", {}),
     )
 
@@ -107,13 +112,17 @@ def query_stream(req: QueryRequest, _user: dict = Depends(require_google_user)):
         state: dict = {}
         node_steps = {
             "analyze_question": (0, "Capturing your question..."),
-            "retrieve_schema": (1, "Retrieving relevant schema..."),
-            "generate_sql": (2, "Generating safe SQL..."),
-            "validate_sql": (3, "Validating the query..."),
-            "repair_sql": (2, "Repairing the SQL query..."),
-            "execute_sql": (4, "Executing against your dataset..."),
-            "process_result": (4, "Processing query results..."),
-            "generate_answer": (5, "Preparing your answer..."),
+            "query_planner": (1, "Planning the query..."),
+            "retrieve_schema": (2, "Retrieving relevant schema..."),
+            "validate_plan": (2, "Checking the plan against the schema..."),
+            "repair_plan": (1, "Correcting the query plan..."),
+            "generate_sql": (3, "Generating safe SQL..."),
+            "validate_sql": (4, "Validating the query..."),
+            "repair_sql": (3, "Correcting the SQL query..."),
+            "execute_sql": (5, "Executing against your dataset..."),
+            "verify_result": (5, "Verifying the result..."),
+            "process_result": (5, "Processing query results..."),
+            "generate_answer": (6, "Preparing your answer..."),
         }
         try:
             inputs, config = _query_input(req.question, thread_id)

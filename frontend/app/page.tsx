@@ -775,19 +775,19 @@ export default function Home() {
         <div className="pipeline card">
           <div className="pipeline-heading">
             <div className="label">AGENT PIPELINE</div>
-            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 5 ? "is-complete" : ""}`}>
-              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 5 ? "COMPLETE" : "READY"}
+            <span className={`pipeline-live ${loading ? "is-running" : pipelineStep === 6 ? "is-complete" : ""}`}>
+              <span className="pipeline-live-dot" /> {loading ? "LIVE" : pipelineStep === 6 ? "COMPLETE" : "READY"}
             </span>
           </div>
           <div className="steps">
-            {["Question", "Schema RAG", "SQL", "Validate", "Execute", "Answer"].map((s, i) => (
+            {["Question", "Plan", "Schema RAG", "SQL", "Validate", "Verify", "Answer"].map((s, i) => (
               <div className={`step ${pipelineStep === i ? "is-active" : ""} ${pipelineStep > i ? "is-complete" : ""}`} key={s}>
                 <span>{pipelineStep > i ? "✓" : i + 1}</span>{s}
               </div>
             ))}
           </div>
           <p className="pipeline-status">
-            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Executing against your dataset...", "Preparing your answer..."][pipelineStep] : pipelineStep === 5 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
+            {loading && pipelineStep >= 0 ? ["Capturing your question...", "Planning the query...", "Retrieving relevant schema...", "Generating safe SQL...", "Validating the query...", "Verifying the result...", "Preparing your answer..."][pipelineStep] : pipelineStep === 6 ? "Workflow complete. Results are ready to explore." : "Ready for a natural-language question."}
           </p>
         </div>
 

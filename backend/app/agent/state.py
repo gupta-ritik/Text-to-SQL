@@ -16,3 +16,10 @@ class AgentState(TypedDict, total=False):
     metadata: dict[str, Any]
     analysis: str
     tables_used: list[str]
+    query_plan: dict[str, Any]
+    plan_valid: bool
+    plan_error: str
+    verification_valid: bool
+    verification_error: str
+    verification_feedback: str
+    verification_correction: str
