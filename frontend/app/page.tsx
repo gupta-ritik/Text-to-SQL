@@ -161,9 +161,29 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [datasetProgress, setDatasetProgress] = useState(0);
+  const [datasetPhase, setDatasetPhase] = useState<"uploading" | "indexing" | "ready">("uploading");
+  const [datasetElapsed, setDatasetElapsed] = useState(0);
+  const [datasetReadyTime, setDatasetReadyTime] = useState<number | null>(null);
+  const datasetStartedAt = useRef<number | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sqlDraft, setSqlDraft] = useState("");
   const [pipelineStep, setPipelineStep] = useState(-1);
+
+  useEffect(() => {
+    if (!uploading && !indexing) return;
+    const timer = window.setInterval(() => {
+      if (datasetStartedAt.current !== null) {
+        setDatasetElapsed((Date.now() - datasetStartedAt.current) / 1000);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [uploading, indexing]);
+
+  function formatDuration(seconds: number) {
+    if (seconds < 60) return `${seconds.toFixed(1)}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m ${Math.floor(seconds % 60)}s`;
+  }
 
   function showToast(message: string, tone: "success" | "error" | "info" = "info") {
     setToast({ message, tone });
@@ -238,8 +258,15 @@ export default function Home() {
     } catch {}
   }
 
-  async function selectDataset(name: string) {
+  async function selectDataset(name: string, preserveTiming = false) {
     if (!name) return;
+    if (!preserveTiming) {
+      datasetStartedAt.current = Date.now();
+      setDatasetElapsed(0);
+      setDatasetReadyTime(null);
+      setDatasetPhase("indexing");
+      setDatasetProgress(45);
+    }
     setError("");
     setSelectedDataset(name);
     try {
@@ -250,10 +277,12 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not select dataset");
+      setDatasetPhase("indexing");
       setIndexing(true);
-      setDatasetProgress(70);
+      setDatasetProgress(previous => Math.max(previous, 50));
       void monitorIndex();
     } catch (err: any) {
+      setIndexing(false);
       setDatasetProgress(0);
       setError(err.message || "Dataset selection failed");
     }
@@ -266,9 +295,15 @@ export default function Home() {
         const res = await fetch(`${API}/api/datasets/index-status`, { headers: authHeaders() });
         const data = await res.json();
         if (data.status === "ready") {
+          const elapsed = datasetStartedAt.current === null
+            ? datasetElapsed
+            : (Date.now() - datasetStartedAt.current) / 1000;
+          setDatasetElapsed(elapsed);
+          setDatasetReadyTime(elapsed);
           setIndexing(false);
           setDatasetProgress(100);
-          showToast("Dataset indexed successfully.", "success");
+          setDatasetPhase("ready");
+          showToast(`Dataset ready in ${formatDuration(elapsed)}.`, "success");
           return;
         }
         if (data.status === "error") {
@@ -278,6 +313,7 @@ export default function Home() {
           showToast(data.error || "Dataset indexing failed.", "error");
           return;
         }
+        setDatasetProgress(previous => Math.min(96, Math.max(previous + 1, 55)));
       } catch {
         setIndexing(false);
         setError("Could not check dataset indexing status. Please refresh and try again.");
@@ -290,25 +326,47 @@ export default function Home() {
   }
 
   async function uploadDataset(file: File) {
+    datasetStartedAt.current = Date.now();
+    setDatasetElapsed(0);
+    setDatasetReadyTime(null);
+    setDatasetPhase("uploading");
     setUploading(true);
-    setDatasetProgress(15);
+    setDatasetProgress(0);
     setError("");
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(`${API}/api/datasets/upload`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: form
+      const data = await new Promise<any>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", `${API}/api/datasets/upload`);
+        const headers = authHeaders();
+        const authorization = headers instanceof Headers
+          ? headers.get("Authorization")
+          : (headers as Record<string, string>)["Authorization"];
+        if (authorization) request.setRequestHeader("Authorization", authorization);
+        request.upload.onprogress = event => {
+          if (event.lengthComputable) setDatasetProgress(Math.round((event.loaded / event.total) * 45));
+        };
+        request.onload = () => {
+          try {
+            const response = JSON.parse(request.responseText);
+            if (request.status >= 200 && request.status < 300) resolve(response);
+            else reject(new Error(response.detail || "Upload failed"));
+          } catch {
+            reject(new Error("Upload returned an invalid response"));
+          }
+        };
+        request.onerror = () => reject(new Error("Upload failed. Check the backend connection."));
+        request.send(form);
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Upload failed");
       setUploading(false);
-      setDatasetProgress(45);
+      setDatasetPhase("indexing");
+      setDatasetProgress(50);
       showToast("CSV uploaded. Preparing schema index...", "info");
       await loadDatasets();
-      await selectDataset(data.dataset.name);
+      await selectDataset(data.dataset.name, true);
     } catch (err: any) {
+      setUploading(false);
       setDatasetProgress(0);
       setError(err.message || "Dataset upload failed");
       showToast(err.message || "Dataset upload failed.", "error");
@@ -672,13 +730,16 @@ export default function Home() {
                 <strong>{datasetProgress}%</strong>
               </div>
               <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.max(datasetProgress, 8)}%` }} /></div>
-              <small>{uploading ? "Sending your CSV to the secure workspace." : "Preparing the agent to answer questions about this dataset."}</small>
+              <div className="dataset-progress-meta">
+                <small>{uploading ? "Sending your CSV to the secure workspace." : "Preparing the agent to answer questions about this dataset."}</small>
+                <small>Elapsed {formatDuration(datasetElapsed)}{indexing ? " · usually ready within 2 minutes" : ""}</small>
+              </div>
             </div>
           )}
 
           {selectedDataset && (
             <div className="dataset-meta">
-              <FileText size={13} /> Active dataset: <strong>{selectedDataset}</strong>{indexing && " (indexing...)"}
+              <FileText size={13} /> Active dataset: <strong>{selectedDataset}</strong>{indexing ? " (indexing...)" : datasetReadyTime !== null ? ` (ready in ${formatDuration(datasetReadyTime)})` : ""}
             </div>
           )}
         </div>
