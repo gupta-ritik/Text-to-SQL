@@ -208,7 +208,7 @@ This repository includes `render.yaml` for a Render Blueprint deployment.
     https://your-project.vercel.app
     ```
 
-6. Wait for the service health check at `/health` to pass.
+7. Wait for the service health check at `/health` to pass.
 
 The Blueprint creates the Render web service. Enter your Neon pooled connection
 URL in the `DATABASE_URL` field when Render prompts for it. The application
