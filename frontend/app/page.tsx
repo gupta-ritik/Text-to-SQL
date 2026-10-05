@@ -3,7 +3,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X } from "lucide-react";
+import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X, Gauge, DatabaseZap } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -39,6 +39,9 @@ type HistoryItem = {
   answer: string;
   sql: string;
   timestamp: number;
+  executionTime?: number;
+  retryCount?: number;
+  rowCount?: number;
 };
 
 type AuthUser = {
@@ -69,6 +72,7 @@ function formatAnswer(answer: string) {
 function ResultAnalytics({ data }: { data: any }) {
   const columns = data?.columns || [];
   const rows = data?.rows || [];
+  const [selectedNumericIndex, setSelectedNumericIndex] = useState<number | null>(null);
   if (!columns.length || !rows.length) return null;
 
   const numericIndices = columns.reduce((indices: number[], _: string, index: number) => {
@@ -77,7 +81,9 @@ function ResultAnalytics({ data }: { data: any }) {
   }, []);
   if (!numericIndices.length) return <p className="muted">No numeric values were returned for visualization.</p>;
 
-  const numericIndex = numericIndices[0];
+  const numericIndex = selectedNumericIndex !== null && numericIndices.includes(selectedNumericIndex)
+    ? selectedNumericIndex
+    : numericIndices[0];
   const labelIndex = columns.findIndex((_: string, index: number) => !numericIndices.includes(index));
   const resolvedLabelIndex = labelIndex >= 0 ? labelIndex : numericIndex;
   const values = rows.map((row: any[]) => Number(row[numericIndex]) || 0);
@@ -101,6 +107,14 @@ function ResultAnalytics({ data }: { data: any }) {
 
   return (
     <div className="analytics-wrap">
+      {numericIndices.length > 1 && (
+        <label className="analytics-select">
+          <span>Metric</span>
+          <select value={numericIndex} onChange={event => setSelectedNumericIndex(Number(event.target.value))}>
+            {numericIndices.map((index: number) => <option key={index} value={index}>{columns[index]}</option>)}
+          </select>
+        </label>
+      )}
       <div className="kpi-grid">
         <div className="kpi-card"><span>Total {columns[numericIndex]}</span><strong>{formatMetric(total)}</strong><small>{rows.length} rows</small></div>
         <div className="kpi-card"><span>Average</span><strong>{formatMetric(average)}</strong><small>per row</small></div>
@@ -136,6 +150,43 @@ function ResultAnalytics({ data }: { data: any }) {
   );
 }
 
+function UsageDashboard({ history, datasetCount }: { history: HistoryItem[]; datasetCount: number }) {
+  const averageRuntime = history.length
+    ? history.reduce((total, item) => total + (item.executionTime || 0), 0) / history.length
+    : 0;
+  const retryCount = history.reduce((total, item) => total + (item.retryCount || 0), 0);
+  const rowCount = history.reduce((total, item) => total + (item.rowCount || 0), 0);
+
+  return (
+    <section className="dashboard card">
+      <div className="dashboard-heading">
+        <div>
+          <div className="label"><Gauge size={16} /> PERSONAL DASHBOARD</div>
+          <p className="section-copy">Your activity is kept separate from other accounts on this browser.</p>
+        </div>
+        <span className="eyebrow">PRIVATE WORKSPACE</span>
+      </div>
+      <div className="dashboard-kpis">
+        <div className="dashboard-kpi"><span><History size={14} /> Queries</span><strong>{history.length}</strong><small>recent queries saved</small></div>
+        <div className="dashboard-kpi"><span><Clock3 size={14} /> Avg runtime</span><strong>{averageRuntime ? `${averageRuntime.toFixed(2)}s` : "—"}</strong><small>successful query average</small></div>
+        <div className="dashboard-kpi"><span><RotateCcw size={14} /> Repairs</span><strong>{retryCount}</strong><small>automatic corrections</small></div>
+        <div className="dashboard-kpi"><span><DatabaseZap size={14} /> Sources</span><strong>{datasetCount}</strong><small>{rowCount.toLocaleString()} rows returned</small></div>
+      </div>
+      {history.length > 0 && (
+        <div className="dashboard-activity">
+          <div className="dashboard-subheading">Recent activity</div>
+          {history.slice(0, 3).map(item => (
+            <div className="activity-row" key={item.timestamp}>
+              <span>{item.question}</span>
+              <small>{item.executionTime ? `${item.executionTime.toFixed(2)}s` : "completed"} · {new Date(item.timestamp).toLocaleDateString()}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Home() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -163,6 +214,7 @@ export default function Home() {
   const [sqlDraft, setSqlDraft] = useState("");
   const [pipelineStep, setPipelineStep] = useState(-1);
   const [guideOpen, setGuideOpen] = useState(false);
+  const historyStorageKey = authUser ? `text-sql-history:${authUser.id}` : "";
 
   useEffect(() => {
     if (!uploading && !indexing) return;
@@ -430,10 +482,18 @@ export default function Home() {
       showToast("Query completed successfully.", "success");
       setHistory(previous => {
         const next = [
-          { question: reqQuestion, answer: data.answer || "", sql: data.sql || "", timestamp: Date.now() },
+          {
+            question: reqQuestion,
+            answer: data.answer || "",
+            sql: data.sql || "",
+            timestamp: Date.now(),
+            executionTime: typeof data.execution_time === "number" ? data.execution_time : undefined,
+            retryCount: typeof data.retry_count === "number" ? data.retry_count : 0,
+            rowCount: Array.isArray(data.data?.rows) ? data.data.rows.length : 0,
+          },
           ...previous.filter(item => item.question !== reqQuestion),
         ].slice(0, 6);
-        localStorage.setItem("text-sql-history", JSON.stringify(next));
+        if (historyStorageKey) localStorage.setItem(historyStorageKey, JSON.stringify(next));
         return next;
       });
     } catch (err: any) {
@@ -488,13 +548,13 @@ export default function Home() {
   function removeHistory(timestamp: number) {
     setHistory(previous => {
       const next = previous.filter(item => item.timestamp !== timestamp);
-      localStorage.setItem("text-sql-history", JSON.stringify(next));
+      if (historyStorageKey) localStorage.setItem(historyStorageKey, JSON.stringify(next));
       return next;
     });
   }
 
   function clearHistory() {
-    localStorage.removeItem("text-sql-history");
+    if (historyStorageKey) localStorage.removeItem(historyStorageKey);
     setHistory([]);
   }
 
@@ -552,11 +612,17 @@ export default function Home() {
   }, [authUser, googleScriptLoaded]);
 
   useEffect(() => {
+    if (!authUser) {
+      setHistory([]);
+      return;
+    }
     try {
-      const saved = JSON.parse(localStorage.getItem("text-sql-history") || "[]");
-      if (Array.isArray(saved)) setHistory(saved);
-    } catch {}
-  }, []);
+      const saved = JSON.parse(localStorage.getItem(`text-sql-history:${authUser.id}`) || "[]");
+      setHistory(Array.isArray(saved) ? saved : []);
+    } catch {
+      setHistory([]);
+    }
+  }, [authUser]);
 
   function exportCsv() {
     if (!result?.data?.columns?.length) return;
@@ -733,6 +799,8 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        <UsageDashboard history={history} datasetCount={datasets.length} />
 
         <div className="composer card">
           <div className="section-heading">

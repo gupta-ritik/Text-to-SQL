@@ -86,6 +86,21 @@ th { color: var(--muted); background: #0b0f13; position: sticky; top: 0; }
 }
 
 .dataset-card { margin-bottom: 18px; }
+.dashboard { margin-bottom: 18px; }
+.dashboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dashboard-heading .label { margin-bottom: 8px; }
+.dashboard-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 17px; }
+.dashboard-kpi { display: grid; gap: 5px; min-width: 0; padding: 14px; border: 1px solid rgba(77,169,213,.24); border-radius: 11px; background: rgba(255,255,255,.62); }
+.dashboard-kpi span { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.dashboard-kpi strong { color: var(--text); font-size: 23px; font-variant-numeric: tabular-nums; }
+.dashboard-kpi small { color: var(--muted); font-size: 10px; }
+.dashboard-activity { display: grid; gap: 7px; margin-top: 17px; }
+.dashboard-subheading { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.activity-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; border: 1px solid rgba(77,169,213,.18); border-radius: 8px; background: rgba(255,255,255,.42); font-size: 12px; }
+.activity-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-row small { flex: 0 0 auto; color: var(--muted); font-size: 10px; }
+.analytics-select { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.analytics-select select { border: 1px solid rgba(77,169,213,.28); border-radius: 8px; padding: 7px 9px; background: rgba(255,255,255,.78); color: var(--text); font: inherit; }
 .dataset-help { display: flex; gap: 8px; align-items: baseline; margin: 14px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .dataset-help strong { color: var(--text); font-size: 12px; }
 .dataset-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -350,4 +365,6 @@ th, td { border-bottom-color: rgba(77,169,213,.16); }
 @media (max-width: 760px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart-header { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activity-row { align-items: flex-start; flex-direction: column; gap: 4px; }
 }

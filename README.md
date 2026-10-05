@@ -4,31 +4,8 @@ A full-stack Text-to-SQL application built around LangGraph.
 
 ## Architecture
 
-```text
-Next.js UI
-   │
-   ▼
-FastAPI /api/query
-   │
-   ▼
-LangGraph
- ├─ analyze_question
- ├─ query_planner
- ├─ retrieve_schema (RAG / Chroma)
- ├─ validate_plan (schema-aware)
- ├─ generate_sql (Groq or OpenRouter)
- ├─ validate_sql (deterministic)
- ├─ repair_sql ─────┐
- ├─ execute_sql     │
- ├─ verify_result   │
- ├─ process_result  │
- └─ generate_answer │
-                    └─ bounded SQL/plan correction attempts (1 by default)
-
-LangSmith → tracing/observability
-DeepEval  → offline RAG + answer evaluation
-SQLAlchemy → PostgreSQL
-```
+The complete component, request-flow, dataset-isolation, security, and
+deployment diagrams are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 1. Requirements
 
@@ -75,6 +52,8 @@ result event, which the frontend uses to display pipeline progress.
 - Editable SQL preview with copy and execute actions
 - Deterministic SQL validation before every execution
 - Automatic result tables and numeric bar visualizations
+- Personal dashboard with user-scoped query history and usage statistics
+- Selectable numeric analytics with trend and comparison visualizations
 - Local query history with load, remove, clear, and rerun support
 - CSV export for query results
 - Optional DeepEval/OpenAI-compatible judge configuration for evaluation
