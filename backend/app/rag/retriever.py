@@ -51,6 +51,39 @@ def retrieve_schema(question: str, user_id: str | None = None) -> dict:
     context_parts = []
     schema = get_database_schema(user_id)
     allowed_tables = {table["table"] for table in schema["tables"]}
+    selected_tables = _selected_table_names(user_id) & allowed_tables
+
+    # Selected user data is already scoped and inspected in the database.
+    # Avoid the shared vector store here so one user's query cannot depend on
+    # stale embeddings or fail because of an embedding backend type mismatch.
+    if selected_tables:
+        selected_schema = [
+            table for table in schema["tables"]
+            if table["table"] in selected_tables
+        ]
+        for table in selected_schema:
+            context_parts.append(_table_context(table))
+            tables.append(table["table"])
+            columns.extend(
+                f"{table['table']}.{column['name']}"
+                for column in table["columns"]
+            )
+        relationships.extend(
+            f"Relationship: {relationship['from_table']}."
+            f"{relationship['from_column']} references "
+            f"{relationship['to_table']}.{relationship['to_column']}."
+            for relationship in schema["relationships"]
+            if (
+                relationship["from_table"] in selected_tables
+                or relationship["to_table"] in selected_tables
+            )
+        )
+        return {
+            "tables": sorted(set(tables)),
+            "columns": sorted(set(columns)),
+            "relationships": sorted(set(relationships)),
+            "context": "\n\n".join(context_parts),
+        }
 
     try:
         store = get_vectorstore()
@@ -104,28 +137,6 @@ def retrieve_schema(question: str, user_id: str | None = None) -> dict:
 
     # Always include explicitly selected dataset tables. A generic question
     # such as "best restaurant" can rank seeded tables above the active CSV.
-    selected_tables = _selected_table_names(user_id) & allowed_tables
-    if selected_tables:
-        for table in schema["tables"]:
-            table_name = table["table"]
-            if table_name not in selected_tables or table_name in tables:
-                continue
-            context_parts.append(_table_context(table))
-            tables.append(table_name)
-            columns.extend(
-                f"{table_name}.{column['name']}" for column in table["columns"]
-            )
-        for relationship in schema["relationships"]:
-            if (
-                relationship["from_table"] in selected_tables
-                or relationship["to_table"] in selected_tables
-            ):
-                relationships.append(
-                    f"Relationship: {relationship['from_table']}."
-                    f"{relationship['from_column']} references "
-                    f"{relationship['to_table']}.{relationship['to_column']}."
-                )
-
     if not context_parts:
         for table in schema["tables"]:
             context_parts.append(_table_context(table))
