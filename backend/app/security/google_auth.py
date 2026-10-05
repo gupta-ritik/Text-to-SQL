@@ -14,7 +14,7 @@ def verify_google_credential(credential: str) -> dict:
 
         return id_token.verify_oauth2_token(
             credential,
-            google_requests.Request(timeout=5),
+            google_requests.Request(),
             settings.google_client_id,
         )
     except Exception as exc:
