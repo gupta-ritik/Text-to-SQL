@@ -46,4 +46,8 @@ def verify_recaptcha(token: str) -> None:
 def require_google_user(authorization: str | None = Header(default=None)) -> dict:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Google sign-in is required.")
-    return verify_google_credential(authorization[7:].strip())
+    claims = verify_google_credential(authorization[7:].strip())
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Google credential has no stable user ID.")
+    return {**claims, "id": user_id}
