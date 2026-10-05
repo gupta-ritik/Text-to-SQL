@@ -247,6 +247,9 @@ export default function Home() {
       if (!res.ok) throw new Error(data.detail || "Google sign-in failed");
       localStorage.setItem("google-id-token", credential);
       setAuthUser(data.user);
+      setResult(null);
+      setError("");
+      setPipelineStep(-1);
     } catch (err: any) {
       if (err.name === "AbortError") {
         setAuthError("The backend is taking too long to respond. Please try signing in again.");
@@ -604,6 +607,12 @@ export default function Home() {
         "error-callback": () => {
           captchaTokenRef.current = "";
           setCaptchaToken("");
+          setAuthError("reCAPTCHA could not be completed. Disable reCAPTCHA in deployment settings or try again.");
+        },
+        "timeout-callback": () => {
+          captchaTokenRef.current = "";
+          setCaptchaToken("");
+          setAuthError("reCAPTCHA timed out. Check that the site key allows this Vercel domain, then try again.");
         },
       });
     };
