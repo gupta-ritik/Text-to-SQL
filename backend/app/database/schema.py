@@ -1,11 +1,29 @@
 import json
+import hashlib
 from pathlib import Path
 
 from sqlalchemy import inspect
 from app.database.connection import get_engine
 
+PUBLIC_TABLES = {
+    "departments",
+    "employees",
+    "customers",
+    "products",
+    "orders",
+    "order_items",
+}
 
-def get_database_schema() -> dict:
+
+def user_scope(user_id: str) -> str:
+    return hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:16]
+
+
+def is_user_dataset_table(table_name: str, user_id: str) -> bool:
+    return table_name.startswith(f"dataset_{user_scope(user_id)}_")
+
+
+def get_database_schema(user_id: str | None = None) -> dict:
     engine = get_engine()
     inspector = inspect(engine)
 
@@ -13,6 +31,12 @@ def get_database_schema() -> dict:
     relationships = []
 
     for table_name in inspector.get_table_names():
+        if (
+            user_id is not None
+            and table_name not in PUBLIC_TABLES
+            and not is_user_dataset_table(table_name, user_id)
+        ):
+            continue
         columns = []
         for c in inspector.get_columns(table_name):
             columns.append({
@@ -45,7 +69,13 @@ def get_database_schema() -> dict:
             "columns": columns,
         })
 
-    relationship_file = Path(__file__).resolve().parents[3] / "datasets" / ".relationships.json"
+    relationship_file = (
+        Path(__file__).resolve().parents[3]
+        / "datasets"
+        / ("users" if user_id is not None else "")
+        / (user_scope(user_id) if user_id is not None else "")
+        / ".relationships.json"
+    )
     if relationship_file.exists():
         try:
             inferred = json.loads(relationship_file.read_text(encoding="utf-8"))

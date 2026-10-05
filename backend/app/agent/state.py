@@ -3,6 +3,7 @@ from typing import Any, TypedDict
 
 class AgentState(TypedDict, total=False):
     question: str
+    user_id: str
     schema_context: str
     retrieved_tables: list[str]
     retrieved_columns: list[str]

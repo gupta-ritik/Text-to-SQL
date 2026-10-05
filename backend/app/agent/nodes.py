@@ -52,7 +52,10 @@ def query_planner(state: AgentState) -> AgentState:
 
 def retrieve_schema_node(state: AgentState) -> AgentState:
     plan_text = json.dumps(state.get("query_plan", {}), default=str)
-    result = retrieve_schema(f"{state['question']}\nQuery plan:\n{plan_text}")
+    result = retrieve_schema(
+        f"{state['question']}\nQuery plan:\n{plan_text}",
+        state.get("user_id"),
+    )
     return {
         "schema_context": result["context"],
         "retrieved_tables": result["tables"],
