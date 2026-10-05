@@ -1,8 +1,11 @@
 from pathlib import Path
+import logging
 
 from app.config import get_settings
 from app.database.schema import get_database_schema, user_scope
 from app.rag.vectorstore import get_vectorstore
+
+logger = logging.getLogger(__name__)
 
 
 def _selected_table_names(user_id: str | None = None) -> set[str]:
@@ -42,21 +45,24 @@ def _table_context(table: dict) -> str:
 
 
 def retrieve_schema(question: str, user_id: str | None = None) -> dict:
-    store = get_vectorstore()
-    results = store.similarity_search_with_score(
-        question,
-        k=get_settings().schema_top_k,
-    )
-
     tables = []
     columns = []
     relationships = []
     context_parts = []
-    allowed_tables = {
-        table["table"] for table in get_database_schema(user_id)["tables"]
-    }
+    schema = get_database_schema(user_id)
+    allowed_tables = {table["table"] for table in schema["tables"]}
 
-    for doc, score in results:
+    try:
+        store = get_vectorstore()
+        results = store.similarity_search_with_score(
+            question,
+            k=int(get_settings().schema_top_k),
+        )
+    except Exception:
+        logger.exception("Schema vector search failed; using database schema fallback.")
+        results = []
+
+    for doc, _score in results:
         table = doc.metadata.get("table")
         if not table or table not in allowed_tables:
             continue
@@ -71,16 +77,20 @@ def retrieve_schema(question: str, user_id: str | None = None) -> dict:
             elif raw_line.lstrip().startswith("- "):
                 item = raw_line.lstrip()[2:].strip()
                 pieces = item.split()
-                if pieces and table:
+                if pieces:
                     columns.append(f"{table}.{pieces[0]}")
 
     # Add directly related table metadata so a join is not lost because
     # only one side ranked highly.
-    if tables:
-        related_docs = store.similarity_search(
-            " ".join(tables),
-            k=min(max(len(tables) + 2, 3), 10),
-        )
+    if tables and results:
+        try:
+            related_docs = get_vectorstore().similarity_search(
+                " ".join(tables),
+                k=min(max(len(tables) + 2, 3), 10),
+            )
+        except Exception:
+            logger.exception("Related schema vector search failed; continuing.")
+            related_docs = []
         for doc in related_docs:
             t = doc.metadata.get("table")
             if t in tables and doc.page_content not in context_parts:
@@ -94,9 +104,8 @@ def retrieve_schema(question: str, user_id: str | None = None) -> dict:
 
     # Always include explicitly selected dataset tables. A generic question
     # such as "best restaurant" can rank seeded tables above the active CSV.
-    selected_tables = _selected_table_names(user_id)
+    selected_tables = _selected_table_names(user_id) & allowed_tables
     if selected_tables:
-        schema = get_database_schema(user_id)
         for table in schema["tables"]:
             table_name = table["table"]
             if table_name not in selected_tables or table_name in tables:
@@ -116,6 +125,14 @@ def retrieve_schema(question: str, user_id: str | None = None) -> dict:
                     f"{relationship['from_column']} references "
                     f"{relationship['to_table']}.{relationship['to_column']}."
                 )
+
+    if not context_parts:
+        for table in schema["tables"]:
+            context_parts.append(_table_context(table))
+            tables.append(table["table"])
+            columns.extend(
+                f"{table['table']}.{column['name']}" for column in table["columns"]
+            )
 
     return {
         "tables": sorted(set(tables)),
