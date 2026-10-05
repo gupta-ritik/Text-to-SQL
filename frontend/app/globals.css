@@ -325,7 +325,6 @@ th, td { border-bottom-color: rgba(77,169,213,.16); }
 .auth-panel { border-color: rgba(237,91,155,.25); background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,248,252,.98)); box-shadow: 0 30px 100px rgba(77,169,213,.18); }
 .auth-kicker { color: var(--coral); }
 .auth-muted { color: var(--muted); }
-.recaptcha-box { min-height: 78px; margin: 22px 0 4px; }
 .account-button { border-color: rgba(77,169,213,.25); color: var(--text); background: rgba(255,255,255,.72); }
 .account-button > span { color: #5d4811; background: var(--accent-soft); }
 .analytics-wrap { display: grid; gap: 18px; }

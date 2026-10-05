@@ -103,14 +103,12 @@ The frontend variables are:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 ```
 
 The backend requires:
 
 ```env
 GOOGLE_CLIENT_ID=your_google_client_id
-RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
 ```
 
 If Google authentication is not configured, `/api/auth/google` returns HTTP
@@ -171,7 +169,6 @@ development and from the container environment in Docker or Render.
 | `OPENROUTER_MODEL` | `meta-llama/llama-3.3-70b-instruct` | OpenRouter model name |
 | `DATABASE_URL` | local PostgreSQL URL | SQLAlchemy PostgreSQL connection |
 | `GOOGLE_CLIENT_ID` | empty | Google OAuth client used by token verification |
-| `RECAPTCHA_SECRET_KEY` | empty | Optional server-side reCAPTCHA verification |
 | `CORS_ORIGINS` | local and project origins | Comma-separated browser origins |
 | `MAX_SQL_RETRIES` | `1` | Number of SQL repair attempts |
 | `MAX_CORRECTION_ATTEMPTS` | `1` | Maximum bounded plan/semantic correction attempts |
@@ -200,8 +197,7 @@ This repository includes `render.yaml` for a Render Blueprint deployment.
 2. In Render, choose **New +** and then **Blueprint**.
 3. Select the GitHub repository and apply `render.yaml`.
 4. Set `GROQ_API_KEY` when Render asks for the secret value.
-5. Set `GOOGLE_CLIENT_ID` and `RECAPTCHA_SECRET_KEY` when Render asks for the
-   authentication secrets.
+5. Set `GOOGLE_CLIENT_ID` when Render asks for the authentication secret.
 6. Set `CORS_ORIGINS` to the Vercel URL you will use, for example:
 
     ```text
@@ -251,9 +247,7 @@ https://text-to-sql-backend.onrender.com/health
     NEXT_PUBLIC_API_URL=https://text-to-sql-backend.onrender.com
     ```
 
-   Also add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and
-   `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` in Vercel. Create matching Google OAuth and
-   reCAPTCHA v2 checkbox credentials for the deployed frontend domain.
+   Also add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel.
 
 5. Deploy the project.
 
@@ -293,7 +287,6 @@ GROQ_MODEL=llama-3.1-8b-instant
 DATABASE_URL=postgresql+psycopg://texttosql:texttosql@localhost:5432/texttosql
 MAX_SQL_RETRIES=1
 GOOGLE_CLIENT_ID=your_google_client_id
-RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
 CORS_ORIGINS=http://localhost:3000
 ```
 
@@ -479,12 +472,11 @@ Authorization: Bearer <Google ID token>
 ### Authentication
 
 `POST /api/auth/google` accepts a Google credential and returns the verified
-user profile. `captcha_token` is optional unless `RECAPTCHA_SECRET_KEY` is set.
+user profile.
 
 ```json
 {
-   "credential": "<google-id-token>",
-   "captcha_token": "<recaptcha-token>"
+   "credential": "<google-id-token>"
 }
 ```
 

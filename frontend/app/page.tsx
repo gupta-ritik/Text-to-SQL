@@ -6,7 +6,6 @@ import Script from "next/script";
 import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
 
 function getGoogleTokenExpiry(token: string): number | null {
   try {
@@ -139,12 +138,6 @@ function ResultAnalytics({ data }: { data: any }) {
 
 export default function Home() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const recaptchaWidgetId = useRef<number | null>(null);
-  const captchaTokenRef = useRef("");
-  const [recaptchaScriptLoaded, setRecaptchaScriptLoaded] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  const [pendingCredential, setPendingCredential] = useState("");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
@@ -213,25 +206,11 @@ export default function Home() {
   function clearGoogleSession(message = "Your Google session expired. Please sign in again.") {
     localStorage.removeItem("google-id-token");
     setAuthUser(null);
-    setPendingCredential("");
-    captchaTokenRef.current = "";
-    setCaptchaToken("");
     setAuthError(message);
     setAuthLoading(false);
-    const recaptcha = (window as any).grecaptcha;
-    if (recaptchaWidgetId.current !== null && recaptcha?.reset) {
-      recaptcha.reset(recaptchaWidgetId.current);
-    }
   }
 
-  async function completeGoogleSignIn(credential: string, token = captchaToken) {
-    token = token || captchaTokenRef.current;
-    if (RECAPTCHA_SITE_KEY && !token) {
-      setPendingCredential(credential);
-      setAuthError("Please complete the reCAPTCHA challenge before signing in.");
-      setAuthLoading(false);
-      return;
-    }
+  async function completeGoogleSignIn(credential: string) {
     setAuthLoading(true);
     setAuthError("");
     const controller = new AbortController();
@@ -240,7 +219,7 @@ export default function Home() {
       const res = await fetch(`${API}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential, captcha_token: token }),
+        body: JSON.stringify({ credential }),
         signal: controller.signal,
       });
       const data = await res.json();
@@ -527,13 +506,7 @@ export default function Home() {
         clearGoogleSession();
         return;
       }
-      if (RECAPTCHA_SITE_KEY) {
-        setPendingCredential(savedCredential);
-        setAuthError("Please complete the reCAPTCHA challenge before signing in.");
-        setAuthLoading(false);
-      } else {
-        void completeGoogleSignIn(savedCredential);
-      }
+      void completeGoogleSignIn(savedCredential);
     } else {
       setAuthLoading(false);
     }
@@ -579,50 +552,6 @@ export default function Home() {
   }, [authUser, googleScriptLoaded]);
 
   useEffect(() => {
-    if (!RECAPTCHA_SITE_KEY || authUser || !recaptchaScriptLoaded || !recaptchaRef.current || recaptchaWidgetId.current !== null) return;
-    let attempts = 0;
-    let retryTimer: number | null = null;
-    const renderRecaptcha = () => {
-      const recaptcha = (window as any).grecaptcha;
-      if (!recaptcha?.render) {
-        attempts += 1;
-        if (attempts < 20) retryTimer = window.setTimeout(renderRecaptcha, 250);
-        else setAuthError("reCAPTCHA could not load. Refresh the page and try again.");
-        return;
-      }
-      recaptchaWidgetId.current = recaptcha.render(recaptchaRef.current, {
-        sitekey: RECAPTCHA_SITE_KEY,
-        callback: (token: string) => {
-          captchaTokenRef.current = token;
-          setCaptchaToken(token);
-          setPendingCredential(credential => {
-            if (credential) void completeGoogleSignIn(credential, token);
-            return "";
-          });
-        },
-        "expired-callback": () => {
-          captchaTokenRef.current = "";
-          setCaptchaToken("");
-        },
-        "error-callback": () => {
-          captchaTokenRef.current = "";
-          setCaptchaToken("");
-          setAuthError("reCAPTCHA could not be completed. Disable reCAPTCHA in deployment settings or try again.");
-        },
-        "timeout-callback": () => {
-          captchaTokenRef.current = "";
-          setCaptchaToken("");
-          setAuthError("reCAPTCHA timed out. Check that the site key allows this Vercel domain, then try again.");
-        },
-      });
-    };
-    renderRecaptcha();
-    return () => {
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-    };
-  }, [authUser, recaptchaScriptLoaded]);
-
-  useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("text-sql-history") || "[]");
       if (Array.isArray(saved)) setHistory(saved);
@@ -664,20 +593,11 @@ export default function Home() {
           onLoad={() => setGoogleScriptLoaded(true)}
           onError={() => setAuthError("Google sign-in could not load. Check your network or ad blocker.")}
         />
-        {RECAPTCHA_SITE_KEY && (
-          <Script
-            src="https://www.google.com/recaptcha/api.js?render=explicit"
-            strategy="afterInteractive"
-            onLoad={() => setRecaptchaScriptLoaded(true)}
-            onError={() => setAuthError("reCAPTCHA could not load. Check your network or ad blocker.")}
-          />
-        )}
         <div className="auth-panel">
           <div className="logo"><Sparkles size={21} /></div>
           <p className="auth-kicker">TEXT•SQL AGENT</p>
           <h1>Ask your database<br /><em>in plain English.</em></h1>
           <p className="auth-muted">Sign in securely with Google to access your natural-language data workspace.</p>
-          {RECAPTCHA_SITE_KEY && <div className="recaptcha-box" ref={recaptchaRef} />}
           <div className="google-button" ref={googleButtonRef} />
           {!googleReady && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <p className="auth-muted auth-loading">Loading Google sign-in...</p>}
           {authError && <p className="auth-error">{authError}</p>}

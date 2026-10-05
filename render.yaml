@@ -17,8 +17,6 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: RECAPTCHA_SECRET_KEY
-        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: LANGSMITH_TRACING
