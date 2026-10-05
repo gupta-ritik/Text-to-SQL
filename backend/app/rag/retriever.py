@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 def _selected_table_names(user_id: str | None = None) -> set[str]:
     selection_file = Path(__file__).resolve().parents[3] / "datasets"
     if user_id is not None:
-        selection_file /= "users" / user_scope(user_id)
+        selection_file /= "users"
+        selection_file /= user_scope(user_id)
     selection_file /= ".selected"
     if not selection_file.exists():
         return set()
