@@ -235,7 +235,7 @@ export default function Home() {
     setAuthLoading(true);
     setAuthError("");
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    const timeout = window.setTimeout(() => controller.abort(), 45000);
     try {
       const res = await fetch(`${API}/api/auth/google`, {
         method: "POST",

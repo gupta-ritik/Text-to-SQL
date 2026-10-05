@@ -199,6 +199,16 @@ def _dataset_summary(path: Path) -> dict:
     return {"name": path.name, **intelligence}
 
 
+def _dataset_descriptor(path: Path) -> dict:
+    """Return file metadata without reading the dataset into memory."""
+    return {
+        "name": path.name,
+        "format": path.suffix.lower().lstrip("."),
+        "table_name": _dataset_table_name(path.name),
+        "size_bytes": path.stat().st_size,
+    }
+
+
 @router.get("/datasets")
 def list_datasets(_user: dict = Depends(require_google_user)):
     datasets = []
@@ -206,8 +216,8 @@ def list_datasets(_user: dict = Depends(require_google_user)):
         if path.suffix.lower() not in SUPPORTED_DATASET_EXTENSIONS:
             continue
         try:
-            datasets.append(_dataset_summary(path))
-        except Exception as exc:
+            datasets.append(_dataset_descriptor(path))
+        except OSError as exc:
             datasets.append({"name": path.name, "error": str(exc)})
     return {"datasets": datasets}
 
@@ -238,7 +248,7 @@ async def upload_dataset(
             with target.open("wb") as output:
                 shutil.copyfileobj(upload.file, output)
             created_paths.append(target)
-            uploaded.append(_dataset_summary(target))
+            uploaded.append(_dataset_descriptor(target))
     except Exception as exc:
         for path in created_paths:
             path.unlink(missing_ok=True)
@@ -260,14 +270,7 @@ def _rebuild_dataset_index():
         DATASET_INDEX_STATUS.update({"status": "error", "error": str(exc)})
 
 
-@router.post("/datasets/select")
-def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict = Depends(require_google_user)):
-    names = payload.get("names") or ([payload.get("name")] if payload.get("name") else [])
-    safe_names = [_safe_dataset_name(name) for name in names if name]
-    targets = [DATASET_DIR / name for name in safe_names]
-    if not targets or any(not target.exists() for target in targets):
-        raise HTTPException(status_code=404, detail="One or more datasets were not found.")
-
+def _activate_datasets(safe_names: list[str], targets: list[Path]) -> None:
     try:
         import pandas as pd
         from sqlalchemy import create_engine
@@ -294,22 +297,32 @@ def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict
             "\n".join(f"{item['name']}\t{item['table_name']}" for item in selected),
             encoding="utf-8",
         )
-
-        DATASET_INDEX_STATUS.update({"status": "indexing", "error": None})
         (DATASET_DIR / ".relationships.json").write_text(
             json.dumps(infer_relationships(relationship_tables), default=str),
             encoding="utf-8",
         )
-        background_tasks.add_task(_rebuild_dataset_index)
-
-        return {
-            "selected_dataset": selected[0]["name"],
-            "table_name": selected[0]["table_name"],
-            "selected_datasets": selected,
-            "index_status": "indexing",
-        }
+        _rebuild_dataset_index()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Could not activate dataset: {exc}")
+        DATASET_INDEX_STATUS.update({"status": "error", "error": str(exc)})
+
+
+@router.post("/datasets/select")
+def select_dataset(payload: dict, background_tasks: BackgroundTasks, _user: dict = Depends(require_google_user)):
+    names = payload.get("names") or ([payload.get("name")] if payload.get("name") else [])
+    safe_names = [_safe_dataset_name(name) for name in names if name]
+    targets = [DATASET_DIR / name for name in safe_names]
+    if not targets or any(not target.exists() for target in targets):
+        raise HTTPException(status_code=404, detail="One or more datasets were not found.")
+
+    DATASET_INDEX_STATUS.update({"status": "indexing", "error": None})
+    background_tasks.add_task(_activate_datasets, safe_names, targets)
+    selected = [_dataset_descriptor(target) for target in targets]
+    return {
+        "selected_dataset": selected[0]["name"],
+        "table_name": selected[0]["table_name"],
+        "selected_datasets": selected,
+        "index_status": "indexing",
+    }
 
 
 @router.get("/datasets/index-status")
