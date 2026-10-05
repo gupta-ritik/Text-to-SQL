@@ -1,7 +1,7 @@
 import time
 import uuid
 import json
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -195,7 +195,7 @@ def _user_index_status(user_id: str) -> dict[str, str | None]:
 def _safe_dataset_name(name: str) -> str:
     name = Path(name).name
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
-    if not name.lower().endswith(".csv"):
+    if not Path(name).suffix:
         name += ".csv"
     return name
 
@@ -223,6 +223,37 @@ def _dataset_descriptor(path: Path, user_id: str | None = None) -> dict:
     }
 
 
+def _read_dataset_preview(path: Path, limit: int = 25) -> dict:
+    """Read a bounded preview without loading large CSV files in full."""
+    import pandas as pd
+
+    limit = max(1, min(limit, 100))
+    extension = path.suffix.lower()
+    if extension == ".csv":
+        frame = pd.read_csv(path, nrows=limit)
+    elif extension == ".tsv":
+        frame = pd.read_csv(path, sep="\t", nrows=limit)
+    elif extension in {".xlsx", ".xls"}:
+        frame = pd.read_excel(path, nrows=limit)
+    else:
+        frames = read_dataset_frames(path)
+        if not frames:
+            raise ValueError("The dataset does not contain any readable table.")
+        logical_name, frame = frames[0]
+
+    preview = frame.head(limit)
+    return {
+        "columns": [str(column) for column in preview.columns],
+        "rows": [
+            [None if pd.isna(value) else str(value) for value in row]
+            for row in preview.itertuples(index=False, name=None)
+        ],
+        "row_count": len(preview),
+        "truncated": len(preview) == limit,
+        "sheet": locals().get("logical_name"),
+    }
+
+
 @router.get("/datasets")
 def list_datasets(user: dict = Depends(require_google_user)):
     dataset_dir = _user_dataset_dir(user["id"])
@@ -235,6 +266,26 @@ def list_datasets(user: dict = Depends(require_google_user)):
         except OSError as exc:
             datasets.append({"name": path.name, "error": str(exc)})
     return {"datasets": datasets}
+
+
+@router.get("/datasets/preview")
+def preview_dataset(
+    name: str = Query(min_length=1, max_length=255),
+    limit: int = Query(default=25, ge=1, le=100),
+    user: dict = Depends(require_google_user),
+):
+    safe_name = _safe_dataset_name(name)
+    target = _user_dataset_dir(user["id"]) / safe_name
+    if not target.exists() or target.suffix.lower() not in SUPPORTED_DATASET_EXTENSIONS:
+        raise HTTPException(status_code=404, detail="Dataset was not found.")
+    try:
+        return {
+            "name": target.name,
+            "format": target.suffix.lower().lstrip("."),
+            **_read_dataset_preview(target, limit),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not preview dataset: {exc}")
 
 
 @router.post("/datasets/upload")

@@ -86,6 +86,10 @@ th { color: var(--muted); background: #0b0f13; position: sticky; top: 0; }
 }
 
 .dataset-card { margin-bottom: 18px; }
+.preview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.preview-card { margin-bottom: 18px; }
+.preview-table { max-height: 380px; }
+.preview-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
 .dashboard { margin-bottom: 18px; }
 .dashboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .dashboard-heading .label { margin-bottom: 8px; }

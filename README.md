@@ -49,6 +49,7 @@ result event, which the frontend uses to display pipeline progress.
 - Natural-language questions translated into read-only SQL
 - Schema retrieval with Chroma and LangGraph orchestration
 - Multi-format, multi-dataset upload and selection
+- Bounded previews for authenticated user datasets
 - Editable SQL preview with copy and execute actions
 - Deterministic SQL validation before every execution
 - Automatic result tables and numeric bar visualizations

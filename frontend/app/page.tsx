@@ -203,6 +203,8 @@ export default function Home() {
   const [datasets, setDatasets] = useState<any[]>([]);
   const [selectedDataset, setSelectedDataset] = useState("");
   const [selectedDatasetNames, setSelectedDatasetNames] = useState<string[]>([]);
+  const [preview, setPreview] = useState<any>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [datasetProgress, setDatasetProgress] = useState(0);
@@ -344,6 +346,23 @@ export default function Home() {
       setIndexing(false);
       setDatasetProgress(0);
       setError(err.message || "Dataset selection failed");
+    }
+  }
+
+  async function previewDataset(name: string) {
+    setPreviewLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/datasets/preview?name=${encodeURIComponent(name)}&limit=25`, {
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Could not preview dataset");
+      setPreview(data);
+    } catch (err: any) {
+      setError(err.message || "Could not preview dataset");
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -772,6 +791,15 @@ export default function Home() {
               <RefreshCw size={15} /> Refresh
             </button>
           </div>
+          {selectedDatasetNames.length > 0 && (
+            <div className="preview-actions">
+              {selectedDatasetNames.map(name => (
+                <button className="icon-btn" type="button" key={name} onClick={() => void previewDataset(name)} disabled={previewLoading}>
+                  <Table2 size={14} /> Preview {name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {(uploading || indexing) && (
             <div className="dataset-progress" role="status" aria-live="polite">
@@ -799,6 +827,31 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {preview && (
+          <section className="preview-card card">
+            <div className="result-heading">
+              <div>
+                <div className="label"><Table2 size={16} /> DATASET PREVIEW</div>
+                <p className="section-copy">{preview.name}{preview.sheet ? ` · ${preview.sheet}` : ""} · showing up to 25 rows</p>
+              </div>
+              <button className="icon-btn" type="button" onClick={() => setPreview(null)}><X size={14} /> Close</button>
+            </div>
+            {preview.columns?.length ? (
+              <div className="table-wrap preview-table">
+                <table>
+                  <thead><tr>{preview.columns.map((column: string) => <th key={column}>{column}</th>)}</tr></thead>
+                  <tbody>
+                    {preview.rows.map((row: unknown[], rowIndex: number) => (
+                      <tr key={rowIndex}>{row.map((value, columnIndex) => <td key={columnIndex}>{String(value ?? "—")}</td>)}</tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="muted">This dataset has no previewable rows.</p>}
+            {preview.truncated && <p className="preview-note">Preview limited to 25 rows. Your full dataset remains available for SQL queries.</p>}
+          </section>
+        )}
 
         <UsageDashboard history={history} datasetCount={datasets.length} />
 
