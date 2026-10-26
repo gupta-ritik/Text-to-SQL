@@ -3,7 +3,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X, Gauge, DatabaseZap } from "lucide-react";
+import { Activity, Database, Send, Sparkles, Table2, Clock3, RotateCcw, Upload, FileText, RefreshCw, History, Download, Copy, Play, Trash2, BarChart3, ShieldCheck, TrendingUp, Lightbulb, BookOpen, X, Gauge, DatabaseZap, Mic, MicOff } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -50,6 +50,30 @@ type AuthUser = {
   email: string;
   picture?: string;
 };
+
+type SpeechRecognitionEventLike = Event & {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
+    length: number;
+  };
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 function formatMetric(value: number) {
   return new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
@@ -197,6 +221,10 @@ export default function Home() {
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" | "info" } | null>(null);
   const toastTimer = useRef<number | null>(null);
   const [question, setQuestion] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
+  const [interimTranscript, setInterimTranscript] = useState("");
+  const speechRecognition = useRef<SpeechRecognitionLike | null>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -218,6 +246,74 @@ export default function Home() {
   const [pipelineStep, setPipelineStep] = useState(-1);
   const [guideOpen, setGuideOpen] = useState(false);
   const historyStorageKey = authUser ? `text-sql-history:${authUser.id}` : "";
+
+  useEffect(() => {
+    const recognitionConstructor = (
+      window as Window & {
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      }
+    ).SpeechRecognition || (
+      window as Window & {
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      }
+    ).webkitSpeechRecognition;
+    setSpeechSupported(Boolean(recognitionConstructor));
+    if (!recognitionConstructor) return;
+
+    const recognition = new recognitionConstructor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-IN";
+    recognition.onresult = event => {
+      let finalText = "";
+      let interimText = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const transcript = event.results[index][0].transcript;
+        if (event.results[index].isFinal) finalText += transcript;
+        else interimText += transcript;
+      }
+      if (finalText) {
+        setQuestion(previous => `${previous}${previous.trim() ? " " : ""}${finalText.trim()}`.trim());
+      }
+      setInterimTranscript(interimText.trim());
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setInterimTranscript("");
+      setError("Microphone input failed. Check your browser microphone permission and try again.");
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      setInterimTranscript("");
+    };
+    speechRecognition.current = recognition;
+
+    return () => {
+      recognition.stop();
+      speechRecognition.current = null;
+    };
+  }, []);
+
+  function toggleSpeech() {
+    const recognition = speechRecognition.current;
+    if (!recognition) {
+      setError("Live speech input is supported in Chrome or Edge. You can still type your question.");
+      return;
+    }
+    setError("");
+    if (isListening) {
+      recognition.stop();
+      return;
+    }
+    setInterimTranscript("");
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setError("Could not start microphone input. Check your browser microphone permission.");
+    }
+  }
 
   useEffect(() => {
     if (!uploading && !indexing) return;
@@ -889,6 +985,21 @@ export default function Home() {
               placeholder="e.g. Show the top 5 customers by revenue..."
               rows={4}
             />
+            <div className="speech-controls">
+              <button
+                className={`icon-btn speech-btn ${isListening ? "is-listening" : ""}`}
+                type="button"
+                onClick={toggleSpeech}
+                disabled={loading}
+                title={speechSupported === false ? "Live speech is not supported in this browser" : isListening ? "Stop listening" : "Start voice input"}
+                aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              >
+                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                {isListening ? "Listening..." : "Speak"}
+              </button>
+              {isListening && <span className="speech-status">Speak your question; it will be added to the box.</span>}
+              {interimTranscript && <span className="speech-interim">{interimTranscript}</span>}
+            </div>
             <div className="composer-footer">
               <div className="examples">
                 {examples.slice(0, 3).map(x => (

@@ -25,6 +25,10 @@ h1 em { color: var(--accent); font-style: normal; }
 .label { display: flex; align-items: center; gap: 8px; color: #aeb7c4; font-size: 10px; font-weight: 800; letter-spacing: .15em; margin-bottom: 15px; }
 textarea { width: 100%; resize: vertical; border: 1px solid var(--line); background: #090c10; color: var(--text); border-radius: 12px; padding: 17px; outline: none; min-height: 130px; }
 textarea:focus { border-color: #3e4a58; }
+.speech-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 9px; min-height: 34px; }
+.speech-btn.is-listening { color: var(--danger); border-color: var(--danger); }
+.speech-status, .speech-interim { color: var(--muted); font-size: 11px; }
+.speech-interim { font-style: italic; }
 .composer-footer { display: flex; gap: 16px; justify-content: space-between; align-items: flex-end; margin-top: 15px; }
 .examples { display: flex; gap: 8px; flex-wrap: wrap; }
 .examples button { color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 11px; font-size: 11px; }
