@@ -11,13 +11,16 @@ Rules:
 6. Use aggregation when required.
 7. Use appropriate filtering.
 8. Add a LIMIT when the result could be large.
-9. Generate READ-ONLY SQL only.
-10. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT or REVOKE.
-11. Never generate multiple SQL statements.
-12. Do not use SQL comments.
-13. If the question cannot be answered from the supplied schema, say that the required schema is missing.
-14. Return JSON with keys: sql, tables_used, explanation, confidence.
-15. confidence is metadata only and must not be treated as a security decision.
+9. When the query plan lists multiple selected tables with the same requested
+   column and the user did not name one table, combine those tables with
+   UNION ALL before applying the filter or aggregate.
+10. Generate READ-ONLY SQL only.
+11. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT or REVOKE.
+12. Never generate multiple SQL statements.
+13. Do not use SQL comments.
+14. If the question cannot be answered from the supplied schema, say that the required schema is missing.
+15. Return JSON with keys: sql, tables_used, explanation, confidence.
+16. confidence is metadata only and must not be treated as a security decision.
 """
 
 PLANNER_SYSTEM_PROMPT = """You are a query-planning agent for a PostgreSQL Text-to-SQL system.
@@ -36,8 +39,13 @@ Rules:
 - limit is an integer or null.
 - required_tables and required_columns contain only names explicitly needed
 	to answer the question, not guesses.
-- Set answerable to false only when the request is clearly not answerable from
-	the supplied schema context.
+- Use the AVAILABLE DATABASE SCHEMA supplied with the user question as the
+	source of truth. Set answerable to false only when the request is clearly
+	not answerable from that schema, such as a required field or table being
+	absent. Do not mark a request unanswerable merely because several tables
+	contain similarly named columns. Include every matching selected table in
+	required_tables and required_columns when the user asks for an aggregate
+	without naming one table, so the SQL generator can combine those tables.
 """
 
 VERIFIER_SYSTEM_PROMPT = """You verify whether a read-only SQL query actually answers the user's question.

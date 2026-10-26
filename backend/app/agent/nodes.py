@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from app.agent.state import AgentState
 from app.config import get_settings
@@ -39,9 +40,15 @@ def analyze_question(state: AgentState) -> AgentState:
 
 
 def query_planner(state: AgentState) -> AgentState:
+    schema_context = state.get("schema_context", "")
     response = get_llm(temperature=0).invoke([
         ("system", PLANNER_SYSTEM_PROMPT),
-        ("human", f"USER QUESTION:\n{state['question']}"),
+        ("human", f"""USER QUESTION:
+{state['question']}
+
+AVAILABLE DATABASE SCHEMA:
+{schema_context}
+"""),
     ])
     plan = _json_from_response(response.content)
     return {
@@ -51,9 +58,8 @@ def query_planner(state: AgentState) -> AgentState:
 
 
 def retrieve_schema_node(state: AgentState) -> AgentState:
-    plan_text = json.dumps(state.get("query_plan", {}), default=str)
     result = retrieve_schema(
-        f"{state['question']}\nQuery plan:\n{plan_text}",
+        state["question"],
         state.get("user_id"),
     )
     return {
@@ -67,6 +73,35 @@ def retrieve_schema_node(state: AgentState) -> AgentState:
 def validate_plan(state: AgentState) -> AgentState:
     plan = state.get("query_plan", {})
     if plan.get("answerable") is False:
+        question = state.get("question", "")
+        requested_columns = {
+            match.lower()
+            for match in re.findall(r"(?:column\s+)?['\"]([^'\"]+)['\"]", question)
+        }
+        matching_columns = [
+            column for column in state.get("retrieved_columns", [])
+            if column.rsplit(".", 1)[-1].lower() in requested_columns
+        ]
+        if matching_columns:
+            matching_tables = sorted({
+                column.rsplit(".", 1)[0] for column in matching_columns
+            })
+            plan = {
+                **plan,
+                "answerable": True,
+                "required_tables": plan.get("required_tables") or matching_tables,
+                "required_columns": plan.get("required_columns") or matching_columns,
+                "explanation": (
+                    "The requested column is available in multiple selected tables; "
+                    "the query will use the matching tables."
+                ),
+            }
+            return {
+                "query_plan": plan,
+                "plan_valid": True,
+                "plan_error": "",
+                "metadata": {**state.get("metadata", {}), "query_plan": plan},
+            }
         return {
             "plan_valid": False,
             "plan_error": plan.get("explanation") or "The request is not answerable from the available schema.",

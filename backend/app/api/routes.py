@@ -223,6 +223,14 @@ def _dataset_descriptor(path: Path, user_id: str | None = None) -> dict:
     }
 
 
+def _is_user_dataset(path: Path) -> bool:
+    return (
+        path.is_file()
+        and not path.name.startswith(".")
+        and path.suffix.lower() in SUPPORTED_DATASET_EXTENSIONS
+    )
+
+
 def _read_dataset_preview(path: Path, limit: int = 25) -> dict:
     """Read a bounded preview without loading large CSV files in full."""
     import pandas as pd
@@ -230,27 +238,38 @@ def _read_dataset_preview(path: Path, limit: int = 25) -> dict:
     limit = max(1, min(limit, 100))
     extension = path.suffix.lower()
     if extension == ".csv":
-        frame = pd.read_csv(path, nrows=limit)
+        frames = [(path.stem, pd.read_csv(path, nrows=limit))]
     elif extension == ".tsv":
-        frame = pd.read_csv(path, sep="\t", nrows=limit)
+        frames = [(path.stem, pd.read_csv(path, sep="\t", nrows=limit))]
     elif extension in {".xlsx", ".xls"}:
-        frame = pd.read_excel(path, nrows=limit)
+        frames = [
+            (f"{path.stem}_{sheet}", frame.head(limit))
+            for sheet, frame in pd.read_excel(path, sheet_name=None).items()
+        ]
     else:
-        frames = read_dataset_frames(path)
-        if not frames:
-            raise ValueError("The dataset does not contain any readable table.")
-        logical_name, frame = frames[0]
+        frames = [(logical_name, frame.head(limit)) for logical_name, frame in read_dataset_frames(path)]
 
-    preview = frame.head(limit)
+    if not frames:
+        raise ValueError("The dataset does not contain any readable table.")
+
+    sheets = []
+    for logical_name, frame in frames:
+        sheets.append({
+            "name": logical_name,
+            "columns": [str(column) for column in frame.columns],
+            "rows": [
+                [None if pd.isna(value) else str(value) for value in row]
+                for row in frame.itertuples(index=False, name=None)
+            ],
+            "row_count": len(frame),
+            "truncated": len(frame) == limit,
+        })
+
+    first = sheets[0]
     return {
-        "columns": [str(column) for column in preview.columns],
-        "rows": [
-            [None if pd.isna(value) else str(value) for value in row]
-            for row in preview.itertuples(index=False, name=None)
-        ],
-        "row_count": len(preview),
-        "truncated": len(preview) == limit,
-        "sheet": locals().get("logical_name"),
+        **first,
+        "sheet": first["name"] if extension in {".xlsx", ".xls"} else None,
+        "sheets": sheets,
     }
 
 
@@ -259,7 +278,7 @@ def list_datasets(user: dict = Depends(require_google_user)):
     dataset_dir = _user_dataset_dir(user["id"])
     datasets = []
     for path in sorted(dataset_dir.iterdir()):
-        if path.suffix.lower() not in SUPPORTED_DATASET_EXTENSIONS:
+        if not _is_user_dataset(path):
             continue
         try:
             datasets.append(_dataset_descriptor(path, user["id"]))
@@ -276,7 +295,7 @@ def preview_dataset(
 ):
     safe_name = _safe_dataset_name(name)
     target = _user_dataset_dir(user["id"]) / safe_name
-    if not target.exists() or target.suffix.lower() not in SUPPORTED_DATASET_EXTENSIONS:
+    if not _is_user_dataset(target):
         raise HTTPException(status_code=404, detail="Dataset was not found.")
     try:
         return {
@@ -411,6 +430,10 @@ def selected_dataset(user: dict = Depends(require_google_user)):
     ]
     if len(lines) == 2 and len(lines[0]) == 1 and len(lines[1]) == 1:
         lines = [[lines[0][0], lines[1][0]]]
+    lines = [
+        line for line in lines
+        if line and _is_user_dataset(selection_file.parent / line[0])
+    ]
     return {
         "selected_dataset": lines[0][0] if lines else None,
         "table_name": lines[0][1] if lines and len(lines[0]) > 1 else None,

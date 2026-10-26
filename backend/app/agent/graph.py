@@ -38,9 +38,9 @@ def build_graph():
     graph.add_node("generate_answer", generate_answer)
 
     graph.add_edge(START, "analyze_question")
-    graph.add_edge("analyze_question", "query_planner")
-    graph.add_edge("query_planner", "retrieve_schema")
-    graph.add_edge("retrieve_schema", "validate_plan")
+    graph.add_edge("analyze_question", "retrieve_schema")
+    graph.add_edge("retrieve_schema", "query_planner")
+    graph.add_edge("query_planner", "validate_plan")
     graph.add_conditional_edges(
         "validate_plan",
         plan_route,

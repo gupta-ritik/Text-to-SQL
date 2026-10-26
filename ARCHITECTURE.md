@@ -5,6 +5,179 @@ repository. The application converts a user's natural-language question into a
 read-only SQL query, executes it against PostgreSQL, and presents the result in
 the Next.js interface.
 
+## Complete system architecture
+
+The diagram below combines the interactive request path, dataset ingestion,
+schema RAG path, persistence, observability, and offline evaluation path. Solid
+arrows represent data or control flow; dashed arrows represent optional,
+asynchronous, or evaluation-only integrations.
+
+```mermaid
+flowchart LR
+    %% -------------------- Client and API boundary --------------------
+    subgraph CLIENT["Client"]
+        U([User])
+        FE["Next.js frontend<br/>frontend/app/page.tsx<br/>query UI, upload, history, analytics"]
+        GIS["Google Identity Services<br/>ID token"]
+        U --> FE
+        FE -. "sign in" .-> GIS
+    end
+
+    subgraph SERVICE["Backend service :8000"]
+        API["FastAPI application<br/>app/main.py"]
+        ROUTES["API routes<br/>/api/auth/google<br/>/api/query + /stream<br/>/api/schema<br/>/api/sql/execute<br/>/api/datasets/*"]
+        AUTH["Google auth + user scope<br/>verify credential; hash user sub"]
+        GRAPH["LangGraph compiled agent<br/>StateGraph + MemorySaver<br/>AgentState"]
+        VALIDATOR["SQL validator<br/>read-only and identifier checks"]
+        CONFIG["Environment settings<br/>provider, limits, tracing, paths"]
+    end
+
+    FE -->|"Bearer Google ID token<br/>question / files / edited SQL"| API
+    API --> ROUTES
+    ROUTES -->|"authenticate protected requests"| AUTH
+    AUTH -. "credential verification" .-> GIS
+    AUTH -->|"user_id + scoped request"| GRAPH
+    ROUTES -->|"upload, preview, select"| DATASET
+    ROUTES -->|"manual SQL"| VALIDATOR
+    CONFIG --> API
+    CONFIG --> GRAPH
+
+    %% -------------------- LangGraph workflow --------------------
+    subgraph WORKFLOW["LangGraph query workflow"]
+        N1["analyze_question"]
+        N2["query_planner<br/>structured required tables/columns"]
+        N3["retrieve_schema"]
+        N4{"validate_plan"}
+        N5["repair_plan"]
+        N6["generate_sql"]
+        N7{"validate_sql"]
+        N8["repair_sql"]
+        N9["execute_sql"]
+        N10{"verify_result"}
+        N11["process_result"]
+        N12["generate_answer"]
+        OUT(["AgentState result<br/>SQL, rows, answer, metadata"])
+
+        N1 --> N2 --> N3 --> N4
+        N4 -->|"valid"| N6
+        N4 -->|"missing / unanswerable<br/>within correction limit"| N5 --> N4
+        N4 -->|"correction limit reached"| N11
+        N6 --> N7
+        N7 -->|"safe"| N9
+        N7 -->|"unsafe or invalid<br/>within retry limit"| N8 --> N7
+        N7 -->|"retry limit reached"| N11
+        N9 -->|"database error"| N8
+        N9 -->|"execution result"| N10
+        N10 -->|"valid"| N11
+        N10 -->|"semantic issue: SQL"| N8
+        N10 -->|"semantic issue: plan"| N5
+        N10 -->|"correction limit reached"| N11
+        N11 --> N12 --> OUT
+    end
+
+    GRAPH --> N1
+    OUT -->|"JSON response or SSE progress/result"| ROUTES
+    ROUTES --> FE
+
+    %% -------------------- LLM and retrieval --------------------
+    subgraph AI["AI services"]
+        LLM["LLM provider<br/>Groq ChatGroq or OpenRouter ChatOpenAI"]
+        EMB["Embedding provider<br/>HashEmbeddings or HuggingFace"]
+        PROMPTS["Prompt templates<br/>planner, SQL, repair, verifier, answer"]
+    end
+
+    N2 -->|"planning prompt"| PROMPTS --> LLM
+    N6 -->|"schema + plan + question"| PROMPTS
+    N8 -->|"validation / execution feedback"| PROMPTS
+    N10 -->|"question + SQL + result"| PROMPTS
+    N12 -->|"question + SQL + result"| PROMPTS
+    PROMPTS --> LLM
+    LLM -->|"JSON plan / SQL / verification<br/>or natural-language answer"| N2
+    LLM --> N6
+    LLM --> N8
+    LLM --> N10
+    LLM --> N12
+
+    subgraph RAG["Schema RAG / ChromaDB"]
+        DOCS["Schema document builder<br/>tables, columns, relationships"]
+        RETRIEVER["Scoped schema retriever<br/>selected dataset direct path<br/>otherwise similarity search"]
+        CHROMA[("ChromaDB persistent collection<br/>schema_metadata<br/>./chroma")]
+        DOCS -->|"Document objects"| EMB
+        EMB -->|"vectors"| CHROMA
+        RETRIEVER -->|"question + query plan"| EMB
+        EMB -->|"query embedding"| CHROMA
+        CHROMA -->|"top-k schema documents"| RETRIEVER
+        RETRIEVER -->|"schema_context, tables,<br/>columns, relationships"| N3
+    end
+
+    N3 --> RETRIEVER
+    N3 -. "active scoped dataset:<br/>bypass shared vector store" .-> SCHEMA
+
+    %% -------------------- Data and persistence --------------------
+    subgraph DATA["Data and persistence"]
+        DATASET["Dataset lifecycle<br/>safe filenames, CSV/TSV/Excel/JSON/JSONL/<br/>Parquet/XML/YAML inspection"]
+        FILES[("datasets/<br/>users/<user_scope>/*")]
+        SQLALCHEMY["SQLAlchemy engine<br/>connection.py"]
+        SCHEMA["Schema introspection<br/>tables, columns, FKs, inferred relationships"]
+        DB[("PostgreSQL :5432<br/>public demo tables + scoped dataset tables")]
+        RESULT["Bounded execution result<br/>columns, rows, row_count,<br/>truncated, execution_time"]
+        DATASET -->|"store upload"| FILES
+        DATASET -->|"infer schema + load rows"| SQLALCHEMY
+        SQLALCHEMY --> DB
+        SCHEMA -->|"inspect metadata"| SQLALCHEMY
+        SQLALCHEMY -->|"execute validated SQL"| DB
+        DB --> RESULT
+    end
+
+    ROUTES --> DATASET
+    DATASET --> SCHEMA
+    SCHEMA --> RETRIEVER
+    N3 --> SCHEMA
+    N9 --> VALIDATOR
+    VALIDATOR -->|"validated read-only SQL"| SQLALCHEMY
+    SQLALCHEMY --> RESULT --> N9
+    SCHEMA --> VALIDATOR
+    ROUTES --> SCHEMA
+    FILES -. "mounted volume / local runtime" .-> DATASET
+
+    %% -------------------- Operations and evaluation --------------------
+    subgraph OPS["Tracing and offline evaluation"]
+        LANGSMITH["LangSmith<br/>optional run tracing<br/>project: text-to-sql-agent"]
+        EVAL["evaluation/runner.py<br/>offline benchmark orchestration"]
+        CASES[("evaluation/datasets/<br/>text_to_sql.json")]
+        BASELINE["Reference SQL execution<br/>exact match, syntax,<br/>execution and schema accuracy"]
+        DEEPEVAL["DeepEval<br/>contextual relevancy / precision / recall<br/>answer relevancy / faithfulness"]
+        REPORTS[("evaluation/reports/<br/>latest.json + latest.md")]
+        EVAL -->|"seed + ingest"| DB
+        EVAL -->|"invoke same graph"| GRAPH
+        CASES --> EVAL
+        EVAL --> BASELINE
+        EVAL -->|"question, answer,<br/>retrieved context"| DEEPEVAL
+        BASELINE --> EVAL
+        DEEPEVAL --> REPORTS
+        EVAL --> REPORTS
+    end
+
+    API -. "LangChain/LangGraph callbacks<br/>when LANGSMITH_TRACING=true" .-> LANGSMITH
+    GRAPH -. "workflow spans and metadata" .-> LANGSMITH
+    LLM -. "provider calls / latency" .-> LANGSMITH
+    FE -. "evaluation status endpoint<br/>(informational only)" .-> ROUTES
+
+    %% -------------------- Styling --------------------
+    classDef client fill:#e8f1ff,stroke:#3973c6,color:#102a43
+    classDef service fill:#e9f8ef,stroke:#2f855a,color:#173b27
+    classDef workflow fill:#fff4d6,stroke:#b7791f,color:#4a2c00
+    classDef ai fill:#f3e8ff,stroke:#805ad5,color:#32204f
+    classDef data fill:#ffe9e5,stroke:#c53030,color:#4a1712
+    classDef ops fill:#e6fffa,stroke:#2c7a7b,color:#173b3b
+    class U,FE,GIS client
+    class API,ROUTES,AUTH,VALIDATOR,CONFIG service
+    class GRAPH,N1,N2,N3,N4,N5,N6,N7,N8,N9,N10,N11,N12,OUT workflow
+    class LLM,EMB,PROMPTS,RAG,RETRIEVER,DOCS,CHROMA ai
+    class DATA,DATASET,FILES,SQLALCHEMY,SCHEMA,DB,RESULT data
+    class OPS,LANGSMITH,EVAL,CASES,BASELINE,DEEPEVAL,REPORTS ops
+```
+
 ## System context
 
 ```mermaid

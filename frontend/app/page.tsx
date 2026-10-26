@@ -204,6 +204,7 @@ export default function Home() {
   const [selectedDataset, setSelectedDataset] = useState("");
   const [selectedDatasetNames, setSelectedDatasetNames] = useState<string[]>([]);
   const [preview, setPreview] = useState<any>(null);
+  const [previewSheetIndex, setPreviewSheetIndex] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
@@ -359,6 +360,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Could not preview dataset");
       setPreview(data);
+      setPreviewSheetIndex(0);
     } catch (err: any) {
       setError(err.message || "Could not preview dataset");
     } finally {
@@ -833,23 +835,40 @@ export default function Home() {
             <div className="result-heading">
               <div>
                 <div className="label"><Table2 size={16} /> DATASET PREVIEW</div>
-                <p className="section-copy">{preview.name}{preview.sheet ? ` · ${preview.sheet}` : ""} · showing up to 25 rows</p>
+                <p className="section-copy">{preview.name} · showing up to 25 rows per sheet</p>
               </div>
               <button className="icon-btn" type="button" onClick={() => setPreview(null)}><X size={14} /> Close</button>
             </div>
-            {preview.columns?.length ? (
+            {(preview.sheets?.length > 1) && (
+              <div className="preview-actions">
+                {preview.sheets.map((sheet: { name: string }, index: number) => (
+                  <button
+                    className={`icon-btn ${previewSheetIndex === index ? "is-active" : ""}`}
+                    type="button"
+                    key={sheet.name}
+                    onClick={() => setPreviewSheetIndex(index)}
+                  >
+                    <Table2 size={14} /> {sheet.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(() => {
+              const sheet = preview.sheets?.[previewSheetIndex] || preview;
+              return sheet.columns?.length ? (
               <div className="table-wrap preview-table">
                 <table>
-                  <thead><tr>{preview.columns.map((column: string) => <th key={column}>{column}</th>)}</tr></thead>
+                  <thead><tr>{sheet.columns.map((column: string) => <th key={column}>{column}</th>)}</tr></thead>
                   <tbody>
-                    {preview.rows.map((row: unknown[], rowIndex: number) => (
+                    {sheet.rows.map((row: unknown[], rowIndex: number) => (
                       <tr key={rowIndex}>{row.map((value, columnIndex) => <td key={columnIndex}>{String(value ?? "—")}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            ) : <p className="muted">This dataset has no previewable rows.</p>}
-            {preview.truncated && <p className="preview-note">Preview limited to 25 rows. Your full dataset remains available for SQL queries.</p>}
+              ) : <p className="muted">This sheet has no previewable rows.</p>;
+            })()}
+            {(preview.sheets?.[previewSheetIndex]?.truncated ?? preview.truncated) && <p className="preview-note">Preview limited to 25 rows. Your full dataset remains available for SQL queries.</p>}
           </section>
         )}
 
