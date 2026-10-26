@@ -221,6 +221,7 @@ export default function Home() {
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" | "info" } | null>(null);
   const toastTimer = useRef<number | null>(null);
   const [question, setQuestion] = useState("");
+  const [cacheEnabled, setCacheEnabled] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -566,7 +567,7 @@ export default function Home() {
       const res = await fetch(`${API}/api/query/stream`, {
         method: "POST",
         headers: authHeaders(true),
-        body: JSON.stringify({ question: reqQuestion })
+        body: JSON.stringify({ question: reqQuestion, cache_enabled: cacheEnabled })
       });
       if (!res.ok) {
         const data = await res.json();
@@ -986,17 +987,6 @@ export default function Home() {
               rows={4}
             />
             <div className="speech-controls">
-              <button
-                className={`icon-btn speech-btn ${isListening ? "is-listening" : ""}`}
-                type="button"
-                onClick={toggleSpeech}
-                disabled={loading}
-                title={speechSupported === false ? "Live speech is not supported in this browser" : isListening ? "Stop listening" : "Start voice input"}
-                aria-label={isListening ? "Stop voice input" : "Start voice input"}
-              >
-                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                {isListening ? "Listening..." : "Speak"}
-              </button>
               {isListening && <span className="speech-status">Speak your question; it will be added to the box.</span>}
               {interimTranscript && <span className="speech-interim">{interimTranscript}</span>}
             </div>
@@ -1006,9 +996,19 @@ export default function Home() {
                   <button type="button" key={x} onClick={() => setQuestion(x)}>{x}</button>
                 ))}
               </div>
-              <button className="run" disabled={loading || indexing || !question.trim()}>
-                {loading ? "Running..." : <>Run <Send size={16} /></>}
-              </button>
+              <div className="composer-actions">
+                <label className="cache-toggle">
+                  <input type="checkbox" checked={cacheEnabled} onChange={event => setCacheEnabled(event.target.checked)} />
+                  <span>{cacheEnabled ? "Cache on" : "Cache off"}</span>
+                </label>
+                <button className="icon-btn composer-speech" type="button" onClick={toggleSpeech} disabled={loading}>
+                  {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                  {isListening ? "Listening..." : "Speak"}
+                </button>
+                <button className="run" disabled={loading || indexing || !question.trim()}>
+                  {loading ? "Running..." : <>Run <Send size={16} /></>}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -1043,6 +1043,8 @@ export default function Home() {
                 <span><Clock3 size={14} /> {result.execution_time ?? "-"}s</span>
                 <span><RotateCcw size={14} /> {result.retry_count} retries</span>
                 <span><Table2 size={14} /> {result.retrieved_tables.join(", ") || "none"}</span>
+                <span>Cache: {result.metadata?.cache_status || "disabled"}</span>
+                {result.metadata?.cache_status === "hit" && <span>Cached response loaded instantly</span>}
               </div>
             </div>
 

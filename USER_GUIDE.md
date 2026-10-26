@@ -77,6 +77,22 @@ Show total revenue by product for January 2025, sorted descending, limited to 10
 
 If a requested field does not exist, the agent should explain that the available schema cannot answer the question instead of inventing a column.
 
+### Compare caching with no caching
+
+The query composer has a **Cache on** toggle.
+
+- With **Cache on**, the first run of a question is a cache miss and the completed
+  response is kept for a short time. Repeating the same question should show
+  `Cache: hit` and return much faster.
+- With **Cache off**, every run executes the full agent pipeline and shows
+  `Cache: disabled`.
+- Dataset selection clears cached responses so results are not reused across
+  different active schemas.
+
+For a simple comparison, run the same question twice with caching enabled, note
+the first and second runtimes, then disable caching and run it again. The
+response card displays the cache status for each run.
+
 ## 7. Data quality and relationships
 
 When a file is uploaded, the backend profiles it using row counts, missing values, duplicate records, unique values, numeric ranges, date-like columns, and categorical-column signals. It produces a quality score as guidance, not as a guarantee that the data is correct.

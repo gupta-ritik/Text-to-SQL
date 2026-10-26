@@ -10,6 +10,7 @@ import shutil
 import json
 
 from app.agent.graph import agent_graph
+from app.cache import query_response_cache
 from app.database.schema import get_database_schema, schema_as_text, user_scope
 from app.database.executor import execute_sql
 from app.database.dataset_intelligence import (
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/api", tags=["text-to-sql"])
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=2, max_length=2000)
+    cache_enabled: bool = True
 
 
 class SQLRequest(BaseModel):
@@ -77,6 +79,27 @@ def _query_input(question: str, thread_id: str, user_id: str) -> tuple[dict, dic
     )
 
 
+def _cached_result(
+    question: str,
+    user_id: str,
+    cache_enabled: bool,
+) -> tuple[dict | None, str]:
+    if not cache_enabled:
+        return None, "disabled"
+    cached = query_response_cache.get(query_response_cache.key(user_id, question))
+    return cached, "hit" if cached is not None else "miss"
+
+
+def _cache_metadata(result: dict, mode: str, started: float) -> dict:
+    metadata = {
+        **result.get("metadata", {}),
+        "cache_enabled": mode != "disabled",
+        "cache_status": mode,
+        "cache_lookup_time": round(time.perf_counter() - started, 4),
+    }
+    return {**result, "metadata": metadata}
+
+
 def _query_response(question: str, result: dict, started: float) -> QueryResponse:
     return QueryResponse(
         question=question,
@@ -105,8 +128,22 @@ def query(req: QueryRequest, user: dict = Depends(require_google_user)):
     thread_id = str(uuid.uuid4())
 
     try:
+        cached, cache_status = _cached_result(req.question, user["id"], req.cache_enabled)
+        if cached is not None:
+            return _query_response(req.question, _cache_metadata(cached, cache_status, started), started)
         inputs, config = _query_input(req.question, thread_id, user["id"])
-        return _query_response(req.question, agent_graph.invoke(inputs, config=config), started)
+        result = _cache_metadata(
+            agent_graph.invoke(inputs, config=config),
+            cache_status,
+            started,
+        )
+        if req.cache_enabled and not result.get("plan_error") and not result.get("sql_error"):
+            query_response_cache.set(
+                query_response_cache.key(user["id"], req.question),
+                user["id"],
+                result,
+            )
+        return _query_response(req.question, result, started)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -133,12 +170,29 @@ def query_stream(req: QueryRequest, user: dict = Depends(require_google_user)):
             "generate_answer": (7, "Preparing your answer..."),
         }
         try:
+            cached, cache_status = _cached_result(req.question, user["id"], req.cache_enabled)
+            if cached is not None:
+                result = _query_response(
+                    req.question,
+                    _cache_metadata(cached, cache_status, started),
+                    started,
+                )
+                yield f"data: {json.dumps({'type': 'progress', 'step': 7, 'message': 'Loaded cached result.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'result', 'result': result.model_dump()}, default=str)}\n\n"
+                return
             inputs, config = _query_input(req.question, thread_id, user["id"])
             for update in agent_graph.stream(inputs, config=config, stream_mode="updates"):
                 for node, node_state in update.items():
                     state.update(node_state or {})
                     step, message = node_steps.get(node, (0, "Working on your request..."))
                     yield f"data: {json.dumps({'type': 'progress', 'step': step, 'message': message})}\n\n"
+            state = _cache_metadata(state, cache_status, started)
+            if req.cache_enabled and not state.get("plan_error") and not state.get("sql_error"):
+                query_response_cache.set(
+                    query_response_cache.key(user["id"], req.question),
+                    user["id"],
+                    state,
+                )
             response = _query_response(req.question, state, started)
             yield f"data: {json.dumps({'type': 'result', 'result': response.model_dump()}, default=str)}\n\n"
         except Exception as exc:
@@ -402,6 +456,7 @@ def select_dataset(payload: dict, background_tasks: BackgroundTasks, user: dict 
         raise HTTPException(status_code=404, detail="One or more datasets were not found.")
 
     _user_index_status(user["id"]).update({"status": "indexing", "error": None})
+    query_response_cache.clear_user(user["id"])
     background_tasks.add_task(_activate_datasets, user["id"], safe_names, targets)
     selected = [_dataset_descriptor(target, user["id"]) for target in targets]
     return {
